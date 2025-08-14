@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Save and Search</title>
+<style>
+  body {
+    font-family: monospace;
+    max-width: 900px;
+    margin: 20px auto 80px;
+    background: #f0f4f8;
+    color: #000;
+    transition: background 0.3s, color 0.3s;
+    min-height: 100vh;
+  }
+  body.dark {
+    background: #121212;
+    color: #eee;
+  }
+  h1 {
+    margin-bottom: 10px;
+  }
+  label {
+    font-weight: bold;
+    user-select: none;
+  }
+  textarea, input[type=text] {
+    width: 100%;
+    font-family: monospace;
+    font-size: 1em;
+    padding: 8px;
+    margin: 10px 0;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    background: inherit;
+    color: inherit;
+    box-sizing: border-box;
+  }
+  body.dark textarea, body.dark input[type=text] {
+    border-color: #555;
+    background: #222;
+  }
+  textarea {
+    height: 180px;
+    resize: vertical;
+  }
+  button {
+    background: #d32f2f;
+    border: none;
+    color: white;
+    padding: 7px 14px;
+    margin: 5px 5px 10px 0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  button:hover {
+    background: #9a2222;
+  }
+  #sarcasm {
+    font-style: italic;
+    color: #555;
+    min-height: 1.2em;
+    margin-bottom: 10px;
+  }
+  body.dark #sarcasm {
+    color: #bbb;
+  }
+  #results {
+    background: #fff;
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 6px;
+    max-height: 320px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    font-family: monospace;
+  }
+  body.dark #results {
+    background: #222;
+    border-color: #555;
+  }
+  .highlight0 { background: #ffeb3b; }
+  .highlight1 { background: #8bc34a; }
+  .highlight2 { background: #03a9f4; }
+  .highlight3 { background: #e91e63; }
+  .highlight4 { background: #ff9800; }
+  .highlight5 { background: #9c27b0; }
+  #info {
+    font-size: 0.9em;
+    color: #666;
+    margin-bottom: 10px;
+  }
+  body.dark #info {
+    color: #bbb;
+  }
+  #topbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  #toggles {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+  #destroyMessage {
+    color: crimson;
+    font-weight: bold;
+    margin-top: 5px;
+    min-height: 1.2em;
+  }
+  #clock {
+    position: fixed;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: monospace;
+    font-size: 3.3em;
+    background: #eee;
+    padding: 6px 12px;
+    border-radius: 12px;
+    color: #222;
+    box-shadow: 0 0 6px rgba(0,0,0,0.2);
+    user-select: none;
+    transition: background 0.3s, color 0.3s;
+    z-index: 9999;
+  }
+  body.dark #clock {
+    background: #333;
+    color: #ddd;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
+  }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <h1>Save and Search</h1>
+  <div id="toggles">
+    <label>Going Dark
+      <input type="checkbox" id="darkModeToggle" />
+    </label>
+    <label>Encrypt Text
+      <input type="checkbox" id="encryptToggle" />
+    </label>
+    <label>Destroy the World
+      <input type="checkbox" id="destroyToggle" />
+    </label>
+  </div>
+  <div id="destroyMessage"></div>
+</div>
+
+<label for="pasteArea">Type or paste any text here:</label>
+<textarea id="pasteArea" placeholder="Type or paste any text here"></textarea>
+
+<div id="info">Words: 0 | Lines: 0 | Characters: 0</div>
+<div id="timestamp">Last changed: never</div>
+
+<label for="searchTerm">Search (comma separated terms):</label>
+<input type="text" id="searchTerm" placeholder="Enter search term(s)" />
+
+<div>
+  <button id="clearSearchBtn">Clear Search</button>
+  <button id="copyResultsBtn" title="Copy search results">Copy Results</button>
+  <button id="exportBtn" title="Export pasted text">Export Text</button>
+  <button id="printBtn" title="Print search results">Print</button>
+</div>
+
+<div id="sarcasm"></div>
+<div id="results"></div>
+
+<div id="clock" aria-live="polite" aria-atomic="true">00:00:00</div>
+
+<script>
+(() => {
+  // Elements
+  const pasteArea = document.getElementById('pasteArea');
+  const searchTerm = document.getElementById('searchTerm');
+  const clearBtn = document.getElementById('clearSearchBtn');
+  const copyBtn = document.getElementById('copyResultsBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const printBtn = document.getElementById('printBtn');
+  const darkToggle = document.getElementById('darkModeToggle');
+  const encryptToggle = document.getElementById('encryptToggle');
+  const destroyToggle = document.getElementById('destroyToggle');
+  const destroyMessage = document.getElementById('destroyMessage');
+  const sarcasm = document.getElementById('sarcasm');
+  const results = document.getElementById('results');
+  const info = document.getElementById('info');
+  const timestamp = document.getElementById('timestamp');
+  const clock = document.getElementById('clock');
+
+  const maxColors = 6;
+  const remarks = [
+    "Oh great, another search. Couldn't wait.",
+    "Looking for trouble, huh? Found any yet?",
+    "Sure, because searching is so thrilling...",
+    "Hold on... this is taking forever... kidding, it's instant.",
+    "Your wish is my command. Searching away!",
+    "Hope you find what you're looking for. Or not.",
+    "I'm just here pretending to work hard.",
+    "Beep boop. Search complete. Your majesty."
+  ];
+
+  // State
+  let originalText = '';
+
+  // Utils
+  const escapeHtml = s => s.replace(/[&<>"']/g, c =>
+    ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c])
+  );
+
+  const gibberish = text => {
+    const chars = '@#$%&*▓▒░ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    return [...text].map(c => (/\s/.test(c) ? c : chars.charAt(Math.floor(Math.random() * chars.length)))).join('');
+  };
+
+  // Update info about text
+  function updateInfo(text = pasteArea.value) {
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+    const lines = text ? text.split('\n').length : 0;
+    info.textContent = `Words: ${words} | Lines: ${lines} | Characters: ${text.length}`;
+  }
+
+  // Update timestamp
+  function updateTimestamp() {
+    const now = new Date();
+    timestamp.textContent = `Last changed: ${now.toLocaleString()}`;
+    localStorage.setItem('last_change_timestamp', now.toISOString());
+  }
+
+  // Save to localStorage
+  function saveText(text) {
+    localStorage.setItem('paste_text', text);
+    updateTimestamp();
+  }
+
+  // Load from localStorage
+  function loadText() {
+    const saved = localStorage.getItem('paste_text');
+    if (saved !== null) {
+      originalText = saved;
+      pasteArea.value = saved;
+      updateInfo(saved);
+      const ts = localStorage.getItem('last_change_timestamp');
+      if (ts) timestamp.textContent = `Last changed: ${new Date(ts).toLocaleString()}`;
+    }
+  }
+
+  // Set paste area text and update info
+  function setPasteText(text) {
+    pasteArea.value = text;
+    updateInfo(text);
+  }
+
+  // Toggle encryption
+  function toggleEncryption(enabled) {
+    if (enabled) {
+      setPasteText(gibberish(originalText));
+      pasteArea.readOnly = true;
+    } else {
+      setPasteText(originalText);
+      pasteArea.readOnly = false;
+    }
+  }
+
+  // Pick random sarcastic remark
+  function randomRemark() {
+    sarcasm.textContent = remarks[Math.floor(Math.random() * remarks.length)];
+  }
+
+  // Highlight terms in text
+  function highlight(text, terms) {
+    let escaped = escapeHtml(text);
+    terms.forEach((term, i) => {
+      if (!term) return;
+      const colorIndex = i % maxColors;
+      const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      escaped = escaped.replace(regex, `<span class="highlight${colorIndex}">$1</span>`);
+    });
+    return escaped;
+  }
+
+  // Perform search & show results
+  function search() {
+    const query = searchTerm.value.trim();
+    results.innerHTML = '';
+    sarcasm.textContent = '';
+    if (!query) return;
+    if (!originalText) {
+      results.textContent = 'Paste or type some text above first!';
+      return;
+    }
+    const terms = query.split(',').map(t => t.trim()).filter(Boolean);
+    if (!terms.length) {
+      results.textContent = 'Please enter valid search term(s).';
+      return;
+    }
+
+    randomRemark();
+
+    const lines = originalText.split('\n').filter(line =>
+      terms.some(term => line.toLowerCase().includes(term.toLowerCase()))
+    );
+
+    results.innerHTML = lines.length
+      ? `<pre>${lines.map(line => highlight(line, terms)).join('\n')}</pre>`
+      : 'No matches found.';
+  }
+
+  // Clear search input and results
+  function clearSearch() {
+    searchTerm.value = '';
+    results.textContent = '';
+    sarcasm.textContent = '';
+  }
+
+  // Copy search results to clipboard
+  function copyResults() {
+    const txt = results.innerText || results.textContent;
+    if (!txt) return alert('No search results to copy!');
+    navigator.clipboard.writeText(txt)
+      .then(() => alert('Copied search results!'))
+      .catch(() => alert('Copy failed.'));
+  }
+
+  // Export pasted text as file
+  function exportText() {
+    if (!originalText) return alert('No text to export!');
+    const blob = new Blob([originalText], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'trespass_notices.txt';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // Print search results
+  function printResults() {
+    if (!results.innerHTML.trim()) return alert('No search results to print!');
+    const w = window.open('', '', 'width=600,height=600');
+    w.document.write(`<html><head><title>Search Results</title><style>body{font-family: monospace;white-space: pre-wrap; padding:10px;}</style></head><body>${results.innerHTML}</body></html>`);
+    w.document.close();
+    w.focus();
+    w.print();
+    w.close();
+  }
+
+  // Update live clock every second
+  function updateClock() {
+    const now = new Date();
+    const h = now.getHours().toString().padStart(2, '0');
+    const m = now.getMinutes().toString().padStart(2, '0');
+    const s = now.getSeconds().toString().padStart(2, '0');
+    clock.textContent = `${h}:${m}:${s}`;
+  }
+
+  // Event Listeners
+  pasteArea.addEventListener('input', () => {
+    if (encryptToggle.checked) {
+      encryptToggle.checked = false;
+      pasteArea.readOnly = false;
+      alert('Encryption disabled due to editing.');
+    }
+    originalText = pasteArea.value;
+    updateInfo(originalText);
+    saveText(originalText);
+    search();
+  });
+
+  searchTerm.addEventListener('input', search);
+  clearBtn.addEventListener('click', clearSearch);
+  copyBtn.addEventListener('click', copyResults);
+  exportBtn.addEventListener('click', exportText);
+  printBtn.addEventListener('click', printResults);
+
+  darkToggle.addEventListener('change', e => {
+    document.body.classList.toggle('dark', e.target.checked);
+    localStorage.setItem('dark_mode', e.target.checked ? 'true' : 'false');
+  });
+
+  encryptToggle.addEventListener('change', e => toggleEncryption(e.target.checked));
+
+  destroyToggle.addEventListener('change', e => {
+    destroyMessage.textContent = e.target.checked
+      ? "Warning: You've unleashed the apocalypse. No refunds!"
+      : "";
+  });
+
+  // Initialization
+  loadText();
+  updateInfo();
+  if (localStorage.getItem('dark_mode') === 'true') {
+    darkToggle.checked = true;
+    document.body.classList.add('dark');
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+})();
+</script>
+
+</body>
+</html>

@@ -9,28 +9,31 @@
   body {
     margin: 0;
     font-family: monospace;
-    background: #0f1115;
-    color: #e6e6e6;
+    background: #070a0f;
+    color: #d7dde8;
   }
 
   header {
+    background: #0f1622;
+    padding: 12px;
     display: flex;
     justify-content: space-between;
-    padding: 10px;
-    background: #151924;
     align-items: center;
+    border-bottom: 1px solid #1f2a3a;
   }
 
   #feed {
-    height: 75vh;
+    height: 72vh;
     overflow-y: auto;
-    padding: 10px;
-    background: #0b0d12;
+    padding: 12px;
+    background: #0a0f18;
   }
 
   .msg {
-    border-bottom: 1px solid #222;
     padding: 8px;
+    margin-bottom: 6px;
+    border-left: 3px solid #2b6cff;
+    background: rgba(255,255,255,0.03);
   }
 
   .user {
@@ -39,27 +42,36 @@
   }
 
   .time {
-    color: #777;
+    color: #666;
     font-size: 0.8em;
+    margin-left: 6px;
   }
 
   #inputBar {
     display: flex;
-    gap: 5px;
+    gap: 6px;
     padding: 10px;
-    background: #151924;
+    background: #0f1622;
+    border-top: 1px solid #1f2a3a;
   }
 
   input, button {
     font-family: monospace;
-    padding: 8px;
     border: none;
     border-radius: 6px;
+    padding: 10px;
   }
 
   input {
-    background: #1c2230;
-    color: white;
+    background: #141c2b;
+    color: #fff;
+  }
+
+  #usernameBox {
+    width: 140px;
+  }
+
+  #msgInput {
     flex: 1;
   }
 
@@ -70,12 +82,7 @@
   }
 
   button:hover {
-    background: #9a2222;
-  }
-
-  #usernameBox {
-    width: 140px;
-    margin-left: 10px;
+    background: #a82525;
   }
 </style>
 </head>
@@ -83,30 +90,29 @@
 <body>
 
 <header>
-  <div>🛰 Command Center</div>
+  <div>🛰 Command Center v2</div>
   <div>
     User:
-    <input id="usernameBox" placeholder="name" />
+    <input id="usernameBox" placeholder="operator name" />
   </div>
 </header>
 
 <div id="feed"></div>
 
 <div id="inputBar">
-  <input id="msgInput" placeholder="type message..." />
+  <input id="msgInput" placeholder="Type message or /command..." />
   <button id="sendBtn">Send</button>
 </div>
 
-<!-- FIREBASE -->
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
 import {
   getDatabase,
   ref,
   push,
   onChildAdded,
   remove
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBDQGlsajY4iMxlJvZUfEvm9CnBKnHcD78",
@@ -118,79 +124,108 @@ const firebaseConfig = {
   appId: "1:51317483112:web:7767ef1f15f473ce98bddd"
 };
 
-window.addEventListener("DOMContentLoaded", () => {
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const messagesRef = ref(db, "messages");
 
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
-  const messagesRef = ref(db, "messages");
+const feed = document.getElementById("feed");
+const input = document.getElementById("msgInput");
+const usernameBox = document.getElementById("usernameBox");
 
-  const feed = document.getElementById("feed");
-  const input = document.getElementById("msgInput");
-  const usernameBox = document.getElementById("usernameBox");
+let lastKey = null;
+const messageKeys = [];
 
-  // Load username
-  usernameBox.value = localStorage.getItem("cmd_user") || "";
+/* USERNAME MEMORY */
+usernameBox.value = localStorage.getItem("cmd_user") || "";
 
-  usernameBox.addEventListener("input", () => {
-    localStorage.setItem("cmd_user", usernameBox.value);
-  });
+usernameBox.addEventListener("input", () => {
+  localStorage.setItem("cmd_user", usernameBox.value.trim());
+});
 
-  // Render message
-  function render(id, data) {
-    const div = document.createElement("div");
-    div.className = "msg";
+/* SANITIZE */
+function clean(str) {
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
 
-    const time = new Date(data.time).toLocaleTimeString();
+/* RENDER */
+function addMessage(data, key) {
+  const div = document.createElement("div");
+  div.className = "msg";
 
-    div.innerHTML = `
-      <span class="user">${data.user}</span>
-      <span class="time">[${time}]</span><br>
-      ${data.text}
-      <br>
-      <button onclick="window.delMsg('${id}', '${data.user}')">💣 delete</button>
-    `;
+  const time = new Date(data.time).toLocaleTimeString();
 
-    feed.appendChild(div);
-    feed.scrollTop = feed.scrollHeight;
+  div.innerHTML = `
+    <span class="user">${clean(data.user)}</span>
+    <span class="time">[${time}]</span><br>
+    ${clean(data.text)}
+  `;
+
+  feed.appendChild(div);
+  feed.scrollTop = feed.scrollHeight;
+
+  messageKeys.push(key);
+  lastKey = key;
+}
+
+/* LIVE STREAM */
+onChildAdded(messagesRef, (snap) => {
+  addMessage(snap.val(), snap.key);
+});
+
+/* COMMAND HANDLER */
+function handleCommand(text) {
+  const cmd = text.toLowerCase();
+
+  if (cmd === "/clear") {
+    feed.innerHTML = "";
+    return true;
   }
 
-  // Live updates
-  onChildAdded(messagesRef, (snap) => {
-    render(snap.key, snap.val());
-  });
-
-  // Send message
-  function send() {
-    const user = usernameBox.value.trim() || "anon";
-    const text = input.value.trim();
-    if (!text) return;
-
-    push(messagesRef, {
-      user,
-      text,
-      time: Date.now()
-    });
-
-    input.value = "";
-  }
-
-  document.getElementById("sendBtn").onclick = send;
-
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") send();
-  });
-
-  // GLOBAL DELETE
-  window.delMsg = (id, user) => {
-    const current = usernameBox.value.trim();
-    if (current !== user) {
-      alert("You can only delete your own messages.");
-      return;
+  if (cmd === "/del last") {
+    if (lastKey) {
+      remove(ref(db, "messages/" + lastKey));
+      feed.lastChild?.remove();
     }
+    return true;
+  }
 
-    remove(ref(db, "messages/" + id));
-  };
+  if (cmd === "/wipe") {
+    remove(messagesRef);
+    feed.innerHTML = "";
+    return true;
+  }
 
+  return false;
+}
+
+/* SEND */
+function send() {
+  const user = usernameBox.value.trim() || "anon";
+  const text = input.value.trim();
+
+  if (!text) return;
+
+  if (handleCommand(text)) {
+    input.value = "";
+    return;
+  }
+
+  push(messagesRef, {
+    user,
+    text,
+    time: Date.now()
+  });
+
+  input.value = "";
+}
+
+document.getElementById("sendBtn").onclick = send;
+
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") send();
 });
 </script>
 

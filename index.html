@@ -1,12 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Command Center v2</title>
+
+<style>
+  body {
+    margin: 0;
+    font-family: monospace;
+    background: #0f1115;
+    color: #e6e6e6;
+  }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    background: #151924;
+    align-items: center;
+  }
+
+  #feed {
+    height: 75vh;
+    overflow-y: auto;
+    padding: 10px;
+    background: #0b0d12;
+  }
+
+  .msg {
+    border-bottom: 1px solid #222;
+    padding: 8px;
+  }
+
+  .user {
+    color: #4dd0e1;
+    font-weight: bold;
+  }
+
+  .time {
+    color: #777;
+    font-size: 0.8em;
+  }
+
+  #inputBar {
+    display: flex;
+    gap: 5px;
+    padding: 10px;
+    background: #151924;
+  }
+
+  input, button {
+    font-family: monospace;
+    padding: 8px;
+    border: none;
+    border-radius: 6px;
+  }
+
+  input {
+    background: #1c2230;
+    color: white;
+    flex: 1;
+  }
+
+  button {
+    background: #d32f2f;
+    color: white;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: #9a2222;
+  }
+
+  #usernameBox {
+    width: 140px;
+    margin-left: 10px;
+  }
+</style>
+</head>
+
+<body>
+
+<header>
+  <div>🛰 Command Center</div>
+  <div>
+    User:
+    <input id="usernameBox" placeholder="name" />
+  </div>
+</header>
+
+<div id="feed"></div>
+
+<div id="inputBar">
+  <input id="msgInput" placeholder="type message..." />
+  <button id="sendBtn">Send</button>
+</div>
+
+<!-- FIREBASE -->
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
   getDatabase,
   ref,
   push,
   onChildAdded,
   remove
-} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBDQGlsajY4iMxlJvZUfEvm9CnBKnHcD78",
@@ -18,99 +118,81 @@ const firebaseConfig = {
   appId: "1:51317483112:web:7767ef1f15f473ce98bddd"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+window.addEventListener("DOMContentLoaded", () => {
 
-const messagesRef = ref(db, "messages");
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const messagesRef = ref(db, "messages");
 
-const feed = document.getElementById("feed");
-const input = document.getElementById("msgInput");
-const usernameBox = document.getElementById("usernameBox");
+  const feed = document.getElementById("feed");
+  const input = document.getElementById("msgInput");
+  const usernameBox = document.getElementById("usernameBox");
 
-/* USER */
-if (localStorage.getItem("cmd_user")) {
-  usernameBox.value = localStorage.getItem("cmd_user");
-}
+  // Load username
+  usernameBox.value = localStorage.getItem("cmd_user") || "";
 
-usernameBox.addEventListener("input", () => {
-  localStorage.setItem("cmd_user", usernameBox.value);
-});
-
-/* RENDER MESSAGE */
-function renderMessage(id, data) {
-  const div = document.createElement("div");
-  div.className = "msg";
-  div.dataset.id = id;
-
-  const time = new Date(data.time).toLocaleTimeString();
-
-  div.innerHTML = `
-    <span class="user">${data.user}</span>
-    <span class="time">[${time}]</span><br>
-    ${data.text}
-    <br>
-    <button onclick="window.deleteMsg('${id}', '${data.user}')">💣 self-destruct</button>
-  `;
-
-  feed.appendChild(div);
-  feed.scrollTop = feed.scrollHeight;
-}
-
-/* LIVE LOAD */
-onChildAdded(messagesRef, (snap) => {
-  renderMessage(snap.key, snap.val());
-});
-
-/* DELETE FUNCTION (GLOBAL) */
-window.deleteMsg = (id, user) => {
-  const currentUser = usernameBox.value.trim();
-
-  if (currentUser !== user) {
-    alert("You can only delete your own messages.");
-    return;
-  }
-
-  const msgRef = ref(db, "messages/" + id);
-  remove(msgRef);
-};
-
-/* SEND MESSAGE */
-function send() {
-  const user = usernameBox.value.trim() || "anon";
-  const text = input.value.trim();
-
-  if (!text) return;
-
-  let delay = 0;
-  let finalText = text;
-
-  // OPTIONAL COMMAND: /msg 10s hello
-  const match = text.match(/^\/msg\s+(\d+)s\s+(.+)/);
-
-  if (match) {
-    delay = parseInt(match[1], 10) * 1000;
-    finalText = match[2];
-  }
-
-  const newRef = push(messagesRef, {
-    user,
-    text: finalText,
-    time: Date.now()
+  usernameBox.addEventListener("input", () => {
+    localStorage.setItem("cmd_user", usernameBox.value);
   });
 
-  input.value = "";
+  // Render message
+  function render(id, data) {
+    const div = document.createElement("div");
+    div.className = "msg";
 
-  // AUTO SELF-DESTRUCT TIMER
-  if (delay > 0) {
-    setTimeout(() => {
-      remove(ref(db, "messages/" + newRef.key));
-    }, delay);
+    const time = new Date(data.time).toLocaleTimeString();
+
+    div.innerHTML = `
+      <span class="user">${data.user}</span>
+      <span class="time">[${time}]</span><br>
+      ${data.text}
+      <br>
+      <button onclick="window.delMsg('${id}', '${data.user}')">💣 delete</button>
+    `;
+
+    feed.appendChild(div);
+    feed.scrollTop = feed.scrollHeight;
   }
-}
 
-document.getElementById("sendBtn").onclick = send;
+  // Live updates
+  onChildAdded(messagesRef, (snap) => {
+    render(snap.key, snap.val());
+  });
 
-input.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") send();
+  // Send message
+  function send() {
+    const user = usernameBox.value.trim() || "anon";
+    const text = input.value.trim();
+    if (!text) return;
+
+    push(messagesRef, {
+      user,
+      text,
+      time: Date.now()
+    });
+
+    input.value = "";
+  }
+
+  document.getElementById("sendBtn").onclick = send;
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") send();
+  });
+
+  // GLOBAL DELETE
+  window.delMsg = (id, user) => {
+    const current = usernameBox.value.trim();
+    if (current !== user) {
+      alert("You can only delete your own messages.");
+      return;
+    }
+
+    remove(ref(db, "messages/" + id));
+  };
+
 });
 </script>
+
+</body>
+</html>

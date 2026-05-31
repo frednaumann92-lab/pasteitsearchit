@@ -3,113 +3,98 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Save and Search (Live)</title>
+<title>Command Center v1</title>
 
 <style>
   body {
     font-family: monospace;
-    max-width: 900px;
-    margin: 20px auto 80px;
-    background: #f0f4f8;
-    color: #000;
-    transition: background 0.3s, color 0.3s;
-    min-height: 100vh;
-  }
-
-  body.dark {
+    margin: 0;
     background: #0f1115;
     color: #e6e6e6;
   }
 
-  h1 { margin-bottom: 10px; }
-
-  textarea, input[type=text] {
-    width: 100%;
-    font-family: monospace;
-    font-size: 1em;
+  header {
     padding: 10px;
-    margin: 10px 0;
+    background: #151924;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  #feed {
+    height: 70vh;
+    overflow-y: auto;
+    padding: 10px;
+    background: #0b0d12;
+  }
+
+  .msg {
+    padding: 6px;
+    border-bottom: 1px solid #222;
+  }
+
+  .user {
+    color: #4dd0e1;
+    font-weight: bold;
+  }
+
+  .time {
+    color: #777;
+    font-size: 0.8em;
+  }
+
+  #inputBar {
+    display: flex;
+    gap: 5px;
+    padding: 10px;
+    background: #151924;
+  }
+
+  input, button {
+    font-family: monospace;
+    padding: 8px;
     border-radius: 6px;
-    border: 1px solid #ccc;
-    background: inherit;
-    color: inherit;
-    box-sizing: border-box;
+    border: none;
   }
 
-  body.dark textarea,
-  body.dark input[type=text] {
-    border-color: #444;
-    background: #1a1d24;
+  input {
+    flex: 1;
+    background: #1c2230;
+    color: #fff;
   }
-
-  textarea { height: 180px; resize: vertical; }
 
   button {
     background: #d32f2f;
-    border: none;
     color: white;
-    padding: 7px 14px;
-    margin: 5px 5px 10px 0;
-    border-radius: 6px;
     cursor: pointer;
   }
 
-  button:hover { background: #9a2222; }
-
-  #results {
-    background: #fff;
-    border: 1px solid #ccc;
-    padding: 10px;
-    border-radius: 6px;
-    max-height: 320px;
-    overflow-y: auto;
-    white-space: pre-wrap;
+  button:hover {
+    background: #9a2222;
   }
 
-  body.dark #results {
-    background: #161a22;
-    border-color: #333;
-  }
-
-  #clock {
-    position: fixed;
-    bottom: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 2.5em;
-    padding: 6px 12px;
-    border-radius: 10px;
-    background: #eee;
-    color: #111;
-  }
-
-  body.dark #clock {
-    background: #222;
-    color: #eee;
+  #usernameBox {
+    width: 150px;
   }
 </style>
 </head>
 
 <body>
 
-<h1>Save and Search (Live Firebase)</h1>
+<header>
+  <div>🛰 Command Center v1</div>
+  <div>
+    User:
+    <input id="usernameBox" placeholder="name" />
+  </div>
+</header>
 
-<label>
-  🌙 Dark Mode
-  <input type="checkbox" id="darkToggle">
-</label>
+<div id="feed"></div>
 
-<textarea id="pasteArea" placeholder="Type or paste text..."></textarea>
-
-<input id="searchTerm" placeholder="Search (comma separated)" />
-
-<button id="clearBtn">Clear</button>
-<button id="copyBtn">Copy</button>
-<button id="exportBtn">Export</button>
-<button id="printBtn">Print</button>
-
-<div id="results"></div>
-<div id="clock">00:00:00</div>
+<div id="inputBar">
+  <input id="msgInput" placeholder="Type command or message..." />
+  <button id="sendBtn">Send</button>
+</div>
 
 <!-- FIREBASE -->
 <script type="module">
@@ -117,8 +102,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/fireba
 import {
   getDatabase,
   ref,
-  set,
-  onValue
+  push,
+  onChildAdded
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -133,94 +118,64 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const sharedRef = ref(db, "sharedText");
+const messagesRef = ref(db, "messages");
 
-const pasteArea = document.getElementById("pasteArea");
-const searchTerm = document.getElementById("searchTerm");
-const results = document.getElementById("results");
-const darkToggle = document.getElementById("darkToggle");
+const feed = document.getElementById("feed");
+const input = document.getElementById("msgInput");
+const usernameBox = document.getElementById("usernameBox");
 
-let isRemoteUpdate = false;
-
-/* LOAD LIVE DATA */
-onValue(sharedRef, (snap) => {
-  const val = snap.val();
-  if (val !== null) {
-    isRemoteUpdate = true;
-    pasteArea.value = val;
-    runSearch();
-    setTimeout(() => isRemoteUpdate = false, 50);
-  }
-});
-
-/* SAVE TEXT */
-pasteArea.addEventListener("input", () => {
-  if (!isRemoteUpdate) {
-    set(sharedRef, pasteArea.value);
-  }
-  runSearch();
-});
-
-/* SEARCH */
-function runSearch() {
-  const text = pasteArea.value;
-  const terms = searchTerm.value
-    .split(",")
-    .map(t => t.trim())
-    .filter(Boolean);
-
-  const lines = text.split("\n").filter(line =>
-    terms.some(t => line.toLowerCase().includes(t.toLowerCase()))
-  );
-
-  results.textContent = lines.length ? lines.join("\n") : "No matches";
+/* LOAD NAME */
+if (localStorage.getItem("cmd_user")) {
+  usernameBox.value = localStorage.getItem("cmd_user");
 }
 
-searchTerm.addEventListener("input", runSearch);
-
-/* DARK MODE */
-darkToggle.addEventListener("change", () => {
-  document.body.classList.toggle("dark", darkToggle.checked);
-  localStorage.setItem("darkMode", darkToggle.checked);
+usernameBox.addEventListener("input", () => {
+  localStorage.setItem("cmd_user", usernameBox.value);
 });
 
-/* LOAD DARK MODE */
-if (localStorage.getItem("darkMode") === "true") {
-  document.body.classList.add("dark");
-  darkToggle.checked = true;
+/* RENDER MESSAGE */
+function addMessage(data) {
+  const div = document.createElement("div");
+  div.className = "msg";
+
+  const time = new Date(data.time).toLocaleTimeString();
+
+  div.innerHTML = `
+    <span class="user">${data.user}</span>
+    <span class="time">[${time}]</span><br>
+    ${data.text}
+  `;
+
+  feed.appendChild(div);
+  feed.scrollTop = feed.scrollHeight;
 }
 
-/* BUTTONS */
-document.getElementById("clearBtn").onclick = () => {
-  searchTerm.value = "";
-  results.textContent = "";
-};
+/* LIVE LISTEN */
+onChildAdded(messagesRef, (snap) => {
+  addMessage(snap.val());
+});
 
-document.getElementById("copyBtn").onclick = () => {
-  navigator.clipboard.writeText(results.textContent || "");
-};
+/* SEND MESSAGE */
+function send() {
+  const user = usernameBox.value.trim() || "anon";
+  const text = input.value.trim();
 
-document.getElementById("exportBtn").onclick = () => {
-  const blob = new Blob([pasteArea.value], { type: "text/plain" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "shared.txt";
-  a.click();
-};
+  if (!text) return;
 
-document.getElementById("printBtn").onclick = () => {
-  const w = window.open();
-  w.document.write(`<pre>${results.textContent}</pre>`);
-  w.print();
-};
+  push(messagesRef, {
+    user,
+    text,
+    time: Date.now()
+  });
 
-/* CLOCK */
-setInterval(() => {
-  const d = new Date();
-  document.getElementById("clock").textContent =
-    d.toTimeString().split(" ")[0];
-}, 1000);
+  input.value = "";
+}
 
+document.getElementById("sendBtn").onclick = send;
+
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") send();
+});
 </script>
 
 </body>

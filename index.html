@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Command Center v2</title>
+<title>Command Center v3</title>
 
 <style>
   body {
@@ -90,10 +90,11 @@
 <body>
 
 <header>
-  <div>🛰 Command Center v2</div>
+  <div>🛰 Command Center v3</div>
   <div>
     User:
     <input id="usernameBox" placeholder="operator name" />
+    <button id="muteBtn">🔊</button>
   </div>
 </header>
 
@@ -114,6 +115,7 @@ import {
   remove
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 
+/* ================= FIREBASE ================= */
 const firebaseConfig = {
   apiKey: "AIzaSyBDQGlsajY4iMxlJvZUfEvm9CnBKnHcD78",
   authDomain: "shared-notes-f6307.firebaseapp.com",
@@ -128,21 +130,57 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const messagesRef = ref(db, "messages");
 
+/* ================= UI ================= */
 const feed = document.getElementById("feed");
 const input = document.getElementById("msgInput");
 const usernameBox = document.getElementById("usernameBox");
+const muteBtn = document.getElementById("muteBtn");
 
-let lastKey = null;
-const messageKeys = [];
-
-/* USERNAME MEMORY */
+/* ================= USER ================= */
 usernameBox.value = localStorage.getItem("cmd_user") || "";
 
 usernameBox.addEventListener("input", () => {
   localStorage.setItem("cmd_user", usernameBox.value.trim());
 });
 
-/* SANITIZE */
+/* ================= AUDIO SYSTEM ================= */
+let soundEnabled = true;
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+/* required to unlock audio on user interaction */
+document.body.addEventListener("click", () => {
+  if (audioCtx.state === "suspended") audioCtx.resume();
+});
+
+function tone(freq, duration = 100, type = "sine", volume = 0.05) {
+  if (!soundEnabled) return;
+
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.value = volume;
+
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  osc.start();
+  setTimeout(() => osc.stop(), duration);
+}
+
+const soundSend = () => tone(520, 60, "square");
+const soundReceive = () => tone(880, 80, "sine");
+const soundCommand = () => tone(660, 90, "triangle");
+const soundDanger = () => tone(140, 300, "sawtooth", 0.08);
+
+/* mute toggle */
+muteBtn.onclick = () => {
+  soundEnabled = !soundEnabled;
+  muteBtn.textContent = soundEnabled ? "🔊" : "🔇";
+};
+
+/* ================= SAFE TEXT ================= */
 function clean(str) {
   return String(str)
     .replaceAll("&", "&amp;")
@@ -150,7 +188,9 @@ function clean(str) {
     .replaceAll(">", "&gt;");
 }
 
-/* RENDER */
+/* ================= MESSAGING ================= */
+let lastKey = null;
+
 function addMessage(data, key) {
   const div = document.createElement("div");
   div.className = "msg";
@@ -166,16 +206,15 @@ function addMessage(data, key) {
   feed.appendChild(div);
   feed.scrollTop = feed.scrollHeight;
 
-  messageKeys.push(key);
   lastKey = key;
 }
 
-/* LIVE STREAM */
 onChildAdded(messagesRef, (snap) => {
   addMessage(snap.val(), snap.key);
+  soundReceive();
 });
 
-/* COMMAND HANDLER */
+/* ================= COMMAND SYSTEM ================= */
 function handleCommand(text) {
   const cmd = text.toLowerCase();
 
@@ -187,12 +226,13 @@ function handleCommand(text) {
   if (cmd === "/del last") {
     if (lastKey) {
       remove(ref(db, "messages/" + lastKey));
-      feed.lastChild?.remove();
+      if (feed.lastChild) feed.lastChild.remove();
     }
     return true;
   }
 
   if (cmd === "/wipe") {
+    soundDanger();
     remove(messagesRef);
     feed.innerHTML = "";
     return true;
@@ -201,7 +241,7 @@ function handleCommand(text) {
   return false;
 }
 
-/* SEND */
+/* ================= SEND ================= */
 function send() {
   const user = usernameBox.value.trim() || "anon";
   const text = input.value.trim();
@@ -209,6 +249,7 @@ function send() {
   if (!text) return;
 
   if (handleCommand(text)) {
+    soundCommand();
     input.value = "";
     return;
   }
@@ -219,6 +260,7 @@ function send() {
     time: Date.now()
   });
 
+  soundSend();
   input.value = "";
 }
 

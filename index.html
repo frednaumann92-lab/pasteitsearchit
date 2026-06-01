@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Command Network v4.3.3 Stable</title>
+<title>Command Network v4.3.4 Enter Fix</title>
 
 <style>
 body {
@@ -101,6 +101,7 @@ input, button {
 input {
   background: #141c2b;
   color: #fff;
+  flex: 1;
 }
 
 button {
@@ -120,7 +121,7 @@ button {
 <body>
 
 <header>
-  <div>🛰 Command Network v4.3.3 Stable</div>
+  <div>🛰 Command Network v4.3.4 Enter Fix</div>
 
   <div>
     <input id="email" placeholder="email" />
@@ -207,22 +208,18 @@ const clean = s => String(s).replaceAll("<","&lt;").replaceAll(">","&gt;");
 /* DB */
 const messagesRef = ch => ref(db,"channels/"+ch);
 
-/* AUTO GUEST LOGIN (SAFE) */
+/* AUTO GUEST LOGIN */
 setTimeout(() => {
   signInAnonymously(auth).catch(console.error);
 }, 200);
 
 /* LOGIN */
 document.getElementById("loginBtn").onclick = async () => {
-  try {
-    await signInWithEmailAndPassword(
-      auth,
-      document.getElementById("email").value,
-      document.getElementById("pass").value
-    );
-  } catch(e) {
-    console.error(e);
-  }
+  await signInWithEmailAndPassword(
+    auth,
+    document.getElementById("email").value,
+    document.getElementById("pass").value
+  );
 };
 
 document.getElementById("logoutBtn").onclick = () => signOut(auth);
@@ -290,7 +287,7 @@ document.querySelectorAll(".channel").forEach(el=>{
   };
 });
 
-/* LISTENER (FIXED CLEAN SWITCHING) */
+/* LISTENER */
 function listen(){
   if(listener) off(listener);
 
@@ -330,8 +327,8 @@ function cmd(t){
 }
 
 /* SEND */
-document.getElementById("sendBtn").onclick = () => {
-  const text=input.value.trim();
+function sendMessage(){
+  const text = input.value.trim();
   if(!text || !user) return;
 
   if(cmd(text)){
@@ -348,7 +345,18 @@ document.getElementById("sendBtn").onclick = () => {
   });
 
   input.value="";
-};
+}
+
+/* BUTTON SEND */
+document.getElementById("sendBtn").onclick = sendMessage;
+
+/* ✅ ENTER KEY FIX */
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    sendMessage();
+  }
+});
 
 </script>
 

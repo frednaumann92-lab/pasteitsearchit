@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Command Network v7 Core</title>
+<title>Command Network Stable Core FIX</title>
 
 <style>
 body {
   margin: 0;
   font-family: monospace;
-  background: #06090f;
+  background: #05070c;
   color: #d7dde8;
 }
 
@@ -39,10 +39,6 @@ header {
   margin-bottom: 6px;
   cursor: pointer;
   background: rgba(255,255,255,0.03);
-}
-
-.channel:hover {
-  background: rgba(255,255,255,0.07);
 }
 
 #feed {
@@ -95,7 +91,7 @@ button {
 <body>
 
 <header>
-  <div>🛰 Command Network v7</div>
+  <div>🛰 Command Network Stable FIX</div>
   <div id="status">connecting...</div>
 </header>
 
@@ -123,6 +119,7 @@ import {
   ref,
   push,
   onValue,
+  off,
   remove
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 
@@ -132,7 +129,6 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 
-/* FIREBASE CONFIG */
 const app = initializeApp({
   apiKey: "AIzaSyBDQGlsajY4iMxlJvZUfEvm9CnBKnHcD78",
   authDomain: "shared-notes-f6307.firebaseapp.com",
@@ -143,20 +139,18 @@ const app = initializeApp({
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-/* ONLY CONTROL MECHANISM */
 const ALLOWED_UIDS = [
   "uiXgz4sgYfo5TjSl1uLc9Xmypk7Xv1"
 ];
 
 let user = null;
 let channel = "alpha";
+let currentRef = null;
 
 /* UI */
 const feed = document.getElementById("feed");
 const msg = document.getElementById("msg");
 const status = document.getElementById("status");
-
-const channelRef = () => ref(db, "channels/" + channel);
 
 /* AUTH */
 onAuthStateChanged(auth, u => {
@@ -168,15 +162,22 @@ onAuthStateChanged(auth, u => {
   }
 
   status.textContent = `online: ${u.uid.slice(0,6)}`;
-  render();
+  bindChannel();
 });
 
-/* AUTO LOGIN */
 signInAnonymously(auth);
 
-/* REAL-TIME RENDER (NO DESYNC EVER) */
-function render() {
-  onValue(channelRef(), snap => {
+/* CORE LISTENER CONTROL (THIS FIXES EVERYTHING) */
+function bindChannel() {
+  const newRef = ref(db, "channels/" + channel);
+
+  if (currentRef) {
+    off(currentRef);   // IMPORTANT: prevents stacking listeners
+  }
+
+  currentRef = newRef;
+
+  onValue(currentRef, snap => {
     const data = snap.val() || {};
 
     feed.innerHTML = "";
@@ -196,7 +197,7 @@ function render() {
 document.querySelectorAll(".channel").forEach(el => {
   el.onclick = () => {
     channel = el.dataset.ch;
-    render();
+    bindChannel();
   };
 });
 
@@ -207,7 +208,8 @@ async function send() {
   const text = msg.value.trim();
   if (!text) return;
 
-  /* COMMAND */
+  const refPath = ref(db, "channels/" + channel);
+
   if (text === "/wipe") {
     if (!ALLOWED_UIDS.includes(user.uid)) {
       alert("Not allowed");
@@ -215,12 +217,12 @@ async function send() {
       return;
     }
 
-    await remove(channelRef());
+    await remove(refPath);
     msg.value = "";
     return;
   }
 
-  await push(channelRef(), {
+  await push(refPath, {
     user: user.uid.slice(0, 6),
     text,
     t: Date.now()

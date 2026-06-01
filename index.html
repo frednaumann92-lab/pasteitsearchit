@@ -3,10 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Command Center v4.5 // AI Matrix Core</title>
+<title>Command Center v5.0 // AI Nexus</title>
 
 <style>
-  /* Default Cyberpunk Theme Variables */
   :root {
     --bg-dark: #05070a;
     --panel-bg: #0b111a;
@@ -17,9 +16,7 @@
     --accent-red: #ff3366;
   }
 
-  * {
-    box-sizing: border-box;
-  }
+  * { box-sizing: border-box; }
 
   body {
     margin: 0;
@@ -34,7 +31,6 @@
     transition: background 0.3s ease, color 0.3s ease;
   }
 
-  /* Scanline CRT Simulation Effect */
   body::before {
     content: " ";
     display: block;
@@ -54,7 +50,6 @@
     align-items: center;
     border-bottom: 2px solid var(--border-color);
     box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-    transition: background 0.3s ease, border-color 0.3s ease;
   }
 
   .logo {
@@ -62,7 +57,6 @@
     color: var(--glow-color);
     text-shadow: 0 0 8px var(--glow-color);
     letter-spacing: 1px;
-    transition: color 0.3s ease, text-shadow 0.3s ease;
   }
 
   .main-container {
@@ -79,20 +73,10 @@
     scroll-behavior: smooth;
   }
 
-  /* Custom Scrollbar */
-  ::-webkit-scrollbar {
-    width: 8px;
-  }
-  ::-webkit-scrollbar-track {
-    background: var(--bg-dark);
-  }
-  ::-webkit-scrollbar-thumb {
-    background: var(--border-color);
-    border-radius: 4px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--glow-color);
-  }
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg-dark); }
+  ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--glow-color); }
 
   .msg {
     padding: 10px 14px;
@@ -101,7 +85,6 @@
     background: rgba(15, 22, 34, 0.4);
     border: 1px solid var(--border-color);
     animation: fadeIn 0.2s ease-out;
-    transition: background 0.3s ease, border-color 0.3s ease;
   }
 
   @keyframes fadeIn {
@@ -109,36 +92,12 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
-  .msg-meta {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 4px;
-  }
+  .msg-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .user { font-weight: bold; }
+  .time { color: var(--text-muted); font-size: 0.75em; }
+  .text-payload { word-break: break-word; line-height: 1.4; white-space: pre-wrap; }
+  .sys-alert { color: var(--glow-color); font-style: italic; border-left: 3px solid var(--glow-color); padding-left: 8px; }
 
-  .user {
-    font-weight: bold;
-  }
-
-  .time {
-    color: var(--text-muted);
-    font-size: 0.75em;
-  }
-
-  .text-payload {
-    word-break: break-word;
-    line-height: 1.4;
-    white-space: pre-wrap; /* Maintains simple system diagnostic formatting */
-  }
-
-  .sys-alert {
-    color: var(--glow-color);
-    font-style: italic;
-    border-left: 3px solid var(--glow-color);
-    padding-left: 8px;
-  }
-
-  /* Sidebar Radar Panel */
   #radar-panel {
     width: 260px;
     background: var(--panel-bg);
@@ -146,7 +105,6 @@
     display: flex;
     flex-direction: column;
     padding: 15px;
-    transition: background 0.3s ease, border-color 0.3s ease;
   }
 
   .panel-title {
@@ -160,29 +118,16 @@
     gap: 6px;
   }
 
-  #radar-list {
-    overflow-y: auto;
-    flex: 1;
-  }
-
-  .operator-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 0;
-    font-size: 13px;
-  }
-
+  #radar-list { overflow-y: auto; flex: 1; }
+  .operator-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; }
   .status-dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
     background: var(--glow-color);
     box-shadow: 0 0 6px var(--glow-color);
-    transition: background 0.3s ease, box-shadow 0.3s ease;
   }
 
-  /* Footer Controls & Inputs */
   #inputBar {
     display: flex;
     gap: 10px;
@@ -190,7 +135,6 @@
     background: var(--panel-bg);
     border-top: 2px solid var(--border-color);
     align-items: center;
-    transition: background 0.3s ease, border-color 0.3s ease;
   }
 
   input, button {
@@ -202,60 +146,23 @@
     transition: all 0.2s ease;
   }
 
-  input {
-    background: #090d14;
-    color: #fff;
-  }
+  input { background: #090d14; color: #fff; }
+  input:focus { border-color: var(--glow-color); box-shadow: 0 0 8px rgba(0, 255, 204, 0.2); }
+  #usernameBox { width: 160px; }
+  #msgInput { flex: 1; }
 
-  input:focus {
-    border-color: var(--glow-color);
-    box-shadow: 0 0 8px rgba(0, 255, 204, 0.2);
-  }
-
-  #usernameBox {
-    width: 160px;
-  }
-
-  #msgInput {
-    flex: 1;
-  }
-
-  button {
-    background: rgba(26, 38, 54, 0.5);
-    color: var(--text-primary);
-    cursor: pointer;
-    font-weight: bold;
-  }
-
-  button:hover {
-    background: var(--border-color);
-    color: var(--glow-color);
-  }
-
-  #sendBtn {
-    background: var(--glow-color);
-    color: var(--bg-dark);
-    border: none;
-    padding: 12px 24px;
-  }
-
-  #sendBtn:hover {
-    background: #00cca3;
-    color: var(--bg-dark);
-    box-shadow: 0 0 12px rgba(0, 255, 204, 0.4);
-  }
-
-  #muteBtn {
-    padding: 6px 10px;
-    font-size: 14px;
-  }
+  button { background: rgba(26, 38, 54, 0.5); color: var(--text-primary); cursor: pointer; font-weight: bold; }
+  button:hover { background: var(--border-color); color: var(--glow-color); }
+  #sendBtn { background: var(--glow-color); color: var(--bg-dark); border: none; padding: 12px 24px; }
+  #sendBtn:hover { background: #00cca3; box-shadow: 0 0 12px rgba(0, 255, 204, 0.4); }
+  #muteBtn { padding: 6px 10px; font-size: 14px; }
 </style>
 </head>
 
 <body>
 
 <header>
-  <div class="logo" id="headerLogo">🛰 TERMINUS_COMMAND_CENTER // v4.5</div>
+  <div class="logo" id="headerLogo">🛰 TERMINUS_COMMAND_CENTER // v5.0</div>
   <div style="display: flex; align-items: center; gap: 10px;">
     <input id="usernameBox" placeholder="SYS_OPERATOR_ID" />
     <button id="muteBtn" title="Toggle System Audio">🔊</button>
@@ -264,7 +171,6 @@
 
 <div class="main-container">
   <div id="feed"></div>
-  
   <div id="radar-panel">
     <div class="panel-title"><span class="status-dot"></span> Active Matrix Nodes</div>
     <div id="radar-list"></div>
@@ -278,26 +184,12 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-import {
-  getDatabase,
-  ref,
-  push,
-  onChildAdded,
-  remove,
-  set,
-  onDisconnect,
-  onValue,
-  get
-} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+import { getDatabase, ref, push, onChildAdded, remove, set, onDisconnect, onValue, get } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 
-// Import the modern Firebase AI Logic SDK modules
-import { 
-  getFirebaseAI, 
-  generativeModel, 
-  generateContent 
-} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-ai-logic.js";
+// Import standard client-side Google AI SDK (Bypasses Firebase AI logic restriction block)
+import { GoogleGenAI } from "https://esm.run/@google/genai";
 
-/* ================= FIREBASE INITIALIZATION ================= */
+/* ================= CONFIGURATION SECURITY PANELS ================= */
 const firebaseConfig = {
   apiKey: "AIzaSyBDQGlsajY4iMxlJvZUfEvm9CnBKnHcD78",
   authDomain: "shared-notes-f6307.firebaseapp.com",
@@ -308,18 +200,21 @@ const firebaseConfig = {
   appId: "1:51317483112:web:7767ef1f15f473ce98bddd"
 };
 
+// ⚠️ PASTE YOUR RAW GEMINI API KEY HERE TO WAKE UP THE AI MATRIX
+const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE";
+
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-
 const messagesRef = ref(db, "messages");
 const presenceRef = ref(db, "presence");
 
-/* ================= SYSTEM AI INITIALIZATION ================= */
-// Instantiate standard AI Logic parameters mapping to Gemini
-const ai = getFirebaseAI(app, { backend: "googleAI" });
-const aiModel = generativeModel(ai, { modelName: "gemini-3.5-flash" });
+// Initialize Google AI Engine directly
+let aiEngine = null;
+if (GEMINI_API_KEY !== "YOUR_GEMINI_API_KEY_HERE" && GEMINI_API_KEY.trim() !== "") {
+  aiEngine = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+}
 
-/* ================= UI ELEMENTS ================= */
+/* ================= UI FRAMEWORK AND CONTROLS ================= */
 const feed = document.getElementById("feed");
 const input = document.getElementById("msgInput");
 const usernameBox = document.getElementById("usernameBox");
@@ -327,109 +222,52 @@ const muteBtn = document.getElementById("muteBtn");
 const radarList = document.getElementById("radar-list");
 const headerLogo = document.getElementById("headerLogo");
 
-/* ================= THEME ENGINE ARCHITECTURE ================= */
 const themes = {
-  cyberpunk: {
-    "--bg-dark": "#05070a",
-    "--panel-bg": "#0b111a",
-    "--border-color": "#1a2636",
-    "--glow-color": "#00ffcc",
-    "--text-primary": "#cbd5e1",
-    "--text-muted": "#4e6580",
-    "logo-text": "🛰 TERMINUS_COMMAND_CENTER // v4.5"
-  },
-  matrix: {
-    "--bg-dark": "#020502",
-    "--panel-bg": "#050f06",
-    "--border-color": "#0f3011",
-    "--glow-color": "#00ff33",
-    "--text-primary": "#a3ffa8",
-    "--text-muted": "#38823e",
-    "logo-text": "📟 NEB_MATRIX_CORE // RELOADED"
-  },
-  retro: {
-    "--bg-dark": "#120a00",
-    "--panel-bg": "#241400",
-    "--border-color": "#4d2b00",
-    "--glow-color": "#ffb300",
-    "--text-primary": "#ffe4a3",
-    "--text-muted": "#8a5c16",
-    "logo-text": "📜 AMBER_TERMINAL_VINTAGE // 1984"
-  },
-  void: {
-    "--bg-dark": "#0a050c",
-    "--panel-bg": "#140b19",
-    "--border-color": "#331340",
-    "--glow-color": "#d946ef",
-    "--text-primary": "#fae8ff",
-    "--text-muted": "#704680",
-    "logo-text": "🔮 VOID_NEXUS_SUBSYSTEM // UNKNOWN"
-  }
+  cyberpunk: { "--bg-dark": "#05070a", "--panel-bg": "#0b111a", "--border-color": "#1a2636", "--glow-color": "#00ffcc", "--text-primary": "#cbd5e1", "--text-muted": "#4e6580", "logo-text": "🛰 TERMINUS_COMMAND_CENTER // v5.0" },
+  matrix: { "--bg-dark": "#020502", "--panel-bg": "#050f06", "--border-color": "#0f3011", "--glow-color": "#00ff33", "--text-primary": "#a3ffa8", "--text-muted": "#38823e", "logo-text": "📟 NEB_MATRIX_CORE // RELOADED" },
+  retro: { "--bg-dark": "#120a00", "--panel-bg": "#241400", "--border-color": "#4d2b00", "--glow-color": "#ffb300", "--text-primary": "#ffe4a3", "--text-muted": "#8a5c16", "logo-text": "📜 AMBER_TERMINAL_VINTAGE // 1984" },
+  void: { "--bg-dark": "#0a050c", "--panel-bg": "#140b19", "--border-color": "#331340", "--glow-color": "#d946ef", "--text-primary": "#fae8ff", "--text-muted": "#704680", "logo-text": "🔮 VOID_NEXUS_SUBSYSTEM // UNKNOWN" }
 };
 
 function applyTheme(themeName) {
   const targetTheme = themes[themeName];
   if (!targetTheme) return false;
-
   Object.entries(targetTheme).forEach(([variable, value]) => {
-    if (variable !== "logo-text") {
-      document.documentElement.style.setProperty(variable, value);
-    }
+    if (variable !== "logo-text") document.documentElement.style.setProperty(variable, value);
   });
-
   headerLogo.textContent = targetTheme["logo-text"];
   localStorage.setItem("cmd_theme", themeName);
   return true;
 }
+applyTheme(localStorage.getItem("cmd_theme") || "cyberpunk");
 
-const activeTheme = localStorage.getItem("cmd_theme") || "cyberpunk";
-applyTheme(activeTheme);
-
-/* ================= OPERATOR CONFIG ================= */
+/* ================= OPERATOR ID PROCESSING ================= */
 usernameBox.value = localStorage.getItem("cmd_user") || "OPERATOR_" + Math.floor(1000 + Math.random() * 9000);
-
 function getUsernameColor(username) {
   let hash = 0;
-  for (let i = 0; i < username.length; i++) {
-    hash = username.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const h = Math.abs(hash) % 360;
-  return `hsl(${h}, 85%, 65%)`;
+  for (let i = 0; i < username.length; i++) hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  return `hsl(${Math.abs(hash) % 360}, 85%, 65%)`;
 }
-
 usernameBox.addEventListener("change", () => {
-  let name = usernameBox.value.trim();
-  if(!name) name = "anon";
-  usernameBox.value = name;
-  localStorage.setItem("cmd_user", name);
+  if(!usernameBox.value.trim()) usernameBox.value = "anon";
+  localStorage.setItem("cmd_user", usernameBox.value.trim());
   setOnline();
 });
 
 /* ================= SYNTHESIZED SYSTEM AUDIO ================= */
 let soundEnabled = true;
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-document.body.addEventListener("click", () => {
-  if (audioCtx.state === "suspended") audioCtx.resume();
-});
+document.body.addEventListener("click", () => { if (audioCtx.state === "suspended") audioCtx.resume(); });
 
 function tone(freq, duration = 100, type = "sine", volume = 0.03) {
   if (!soundEnabled) return;
-
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
-
-  osc.type = type;
-  osc.frequency.value = freq;
-  gain.gain.value = volume;
-
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-
+  osc.type = type; osc.frequency.value = freq; gain.gain.value = volume;
+  osc.connect(gain); gain.connect(audioCtx.destination);
   osc.start();
   gain.gain.setValueAtTime(volume, audioCtx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration/1000);
-  
   setTimeout(() => osc.stop(), duration);
 }
 
@@ -438,33 +276,20 @@ const soundReceive = () => tone(900, 50, "sine", 0.03);
 const soundCommand = () => tone(440, 150, "square", 0.02);
 const soundDanger = () => tone(120, 400, "sawtooth", 0.06);
 
-muteBtn.onclick = () => {
-  soundEnabled = !soundEnabled;
-  muteBtn.textContent = soundEnabled ? "🔊" : "🔇";
-};
+muteBtn.onclick = () => { soundEnabled = !soundEnabled; muteBtn.textContent = soundEnabled ? "🔊" : "🔇"; };
 
-/* ================= SECURITY & XSS PROTECTION ================= */
-function clean(str) {
-  return String(str)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
-}
+function clean(str) { return String(str).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;"); }
 
-/* ================= CHAT LOG ENGINE ================= */
+/* ================= REAL-TIME DATABASE SYNC ENGINE ================= */
 let itemsMap = new Map();
 
 function createMessageElement(data, key) {
   const div = document.createElement("div");
   div.className = "msg";
-  div.setAttribute("data-key", key);
-
   const timeStr = new Date(data.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
-  const userColor = getUsernameColor(data.user);
-
   div.innerHTML = `
     <div class="msg-meta">
-      <span class="user" style="color: ${userColor}">${clean(data.user)}</span>
+      <span class="user" style="color: ${getUsernameColor(data.user)}">${clean(data.user)}</span>
       <span class="time">${timeStr}</span>
     </div>
     <div class="text-payload">${clean(data.text)}</div>
@@ -473,192 +298,134 @@ function createMessageElement(data, key) {
 }
 
 onChildAdded(messagesRef, (snap) => {
-  const key = snap.key;
-  const data = snap.val();
-  
-  if (itemsMap.has(key)) return;
-
-  const msgEl = createMessageElement(data, key);
+  if (itemsMap.has(snap.key)) return;
+  const msgEl = createMessageElement(snap.val(), snap.key);
   feed.appendChild(msgEl);
-  itemsMap.set(key, msgEl);
-  
+  itemsMap.set(snap.key, msgEl);
   feed.scrollTop = feed.scrollHeight;
   soundReceive();
 });
 
 onValue(messagesRef, (snap) => {
-  if (!snap.exists()) {
-    feed.innerHTML = "";
-    itemsMap.clear();
-    return;
-  }
-  
+  if (!snap.exists()) { feed.innerHTML = ""; itemsMap.clear(); return; }
   const currentKeys = Object.keys(snap.val());
   for (let localKey of itemsMap.keys()) {
-    if (!currentKeys.includes(localKey)) {
-      itemsMap.get(localKey).remove();
-      itemsMap.delete(localKey);
-    }
+    if (!currentKeys.includes(localKey)) { itemsMap.get(localKey).remove(); itemsMap.delete(localKey); }
   }
 });
 
-/* ================= REAL-TIME GRID MATRIX PRESENCE ================= */
+/* ================= NETWORK RADAR PRESENCE ================= */
 const myId = crypto.randomUUID?.() || String(Date.now() + Math.random());
 const myPresenceRef = ref(db, `presence/${myId}`);
-
 function setOnline() {
-  const name = usernameBox.value.trim() || "anon";
-
-  set(myPresenceRef, {
-    user: name,
-    status: "online",
-    lastSeen: Date.now()
-  });
-
+  set(myPresenceRef, { user: usernameBox.value.trim() || "anon", status: "online", lastSeen: Date.now() });
   onDisconnect(myPresenceRef).remove();
 }
-
-setOnline();
-setInterval(setOnline, 30000);
+setOnline(); setInterval(setOnline, 30000);
 
 onValue(presenceRef, (snap) => {
-  const data = snap.val() || {};
-  radarList.innerHTML = "";
-
+  const data = snap.val() || {}; radarList.innerHTML = "";
   Object.entries(data).forEach(([id, profile]) => {
     if (profile.status === "online") {
-      const userColor = getUsernameColor(profile.user);
       const row = document.createElement("div");
       row.className = "operator-row";
-      row.innerHTML = `
-        <span class="status-dot"></span>
-        <span style="color: ${userColor}">${clean(profile.user)}</span>
-        ${id === myId ? '<span style="font-size:9px; color:var(--text-muted)">[YOU]</span>' : ''}
-      `;
+      row.innerHTML = `<span class="status-dot"></span><span style="color: ${getUsernameColor(profile.user)}">${clean(profile.user)}</span> ${id === myId ? '<span style="font-size:9px; color:var(--text-muted)">[YOU]</span>' : ''}`;
       radarList.appendChild(row);
     }
   });
 });
 
-/* ================= SUBSYSTEM COMMAND PROCESSING ================= */
+/* ================= SYSTEM CORE COMMAND INTELLIGENCE ================= */
 async function handleCommand(text) {
   const cleanText = text.trim();
   const cmd = cleanText.toLowerCase();
 
-  // Intercepting prompt triggers routing directly to the Firebase AI Logic SDK 
   if (cmd.startsWith("/ai ")) {
     const aiPrompt = cleanText.substring(4).trim();
     if (!aiPrompt) return true;
 
-    // 1. Generate local placeholder readout
     const thinkingEl = document.createElement("div");
     thinkingEl.className = "msg";
-    thinkingEl.innerHTML = `<div class="text-payload sys-alert">>> SHIP_AI: Processing algorithmic telemetry...</div>`;
+    thinkingEl.innerHTML = `<div class="text-payload sys-alert">>> SHIP_AI: Query received. Computing algorithmic output...</div>`;
     feed.appendChild(thinkingEl);
     feed.scrollTop = feed.scrollHeight;
 
-    try {
-      // 2. Transmit prompt through Firebase SDK securely
-      const response = await generateContent(aiModel, aiPrompt);
-      thinkingEl.remove();
+    if (!aiEngine) {
+      thinkingEl.innerHTML = `<div class="text-payload" style="color: var(--accent-red)">>> AI_ERROR: Key array missing. Paste your API key on line 144 of the script source code.</div>`;
+      return true;
+    }
 
-      // 3. Render final AI matrix response node
+    try {
+      // Direct call utilizing standard client-side engine bypass
+      const response = await aiEngine.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: aiPrompt,
+      });
+
+      thinkingEl.remove();
       const aiDiv = document.createElement("div");
       aiDiv.className = "msg";
       aiDiv.style.borderLeft = "3px solid #bc6ff1";
-      
-      const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
       aiDiv.innerHTML = `
         <div class="msg-meta">
           <span class="user" style="color: #bc6ff1">🤖 SHIP_AI</span>
-          <span class="time">${timestamp}</span>
+          <span class="time">${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})}</span>
         </div>
         <div class="text-payload">${clean(response.text)}</div>
       `;
       feed.appendChild(aiDiv);
     } catch (err) {
-      thinkingEl.remove();
-      const errDiv = document.createElement("div");
-      errDiv.className = "msg";
-      errDiv.innerHTML = `<div class="text-payload" style="color: var(--accent-red)">>> AI_ERROR: Handshake rejected. Ensure billing plans and required APIs are initialized.</div>`;
-      feed.appendChild(errDiv);
+      thinkingEl.innerHTML = `<div class="text-payload" style="color: var(--accent-red)">>> SUBSYSTEM_FAULT: Core connection refused. Verify network links or API key limits.</div>`;
     }
-
     feed.scrollTop = feed.scrollHeight;
     return true;
   }
 
-  // Visual dynamic layout switches
   if (cmd.startsWith("/theme ")) {
     const targetTheme = cleanText.split(" ")[1];
-    const success = applyTheme(targetTheme);
-    
-    if (success) {
+    if (applyTheme(targetTheme)) {
       const alertDiv = document.createElement("div");
       alertDiv.className = "msg";
       alertDiv.innerHTML = `<div class="text-payload sys-alert">>> Visual UI configuration adjusted to "${targetTheme.toUpperCase()}".</div>`;
       feed.appendChild(alertDiv);
-      feed.scrollTop = feed.scrollHeight;
     }
     return true;
   }
 
-  if (cmd === "/clear") {
-    feed.innerHTML = "";
-    itemsMap.clear();
-    return true;
-  }
+  if (cmd === "/clear") { feed.innerHTML = ""; itemsMap.clear(); return true; }
 
   if (cmd === "/del last") {
     const snap = await get(messagesRef);
     if (snap.exists()) {
       const keys = Object.keys(snap.val());
-      const absoluteLastKey = keys[keys.length - 1];
-      if (absoluteLastKey) {
-        remove(ref(db, "messages/" + absoluteLastKey));
-      }
+      if (keys.length > 0) remove(ref(db, "messages/" + keys[keys.length - 1]));
     }
     return true;
   }
 
-  if (cmd === "/wipe") {
-    soundDanger();
-    remove(messagesRef);
-    return true;
-  }
-
+  if (cmd === "/wipe") { soundDanger(); remove(messagesRef); return true; }
   return false;
 }
 
-/* ================= CENTRAL ROUTER DISPATCH ================= */
+/* ================= INPUT CENTRAL INTERCEPT ROUTER ================= */
 async function send() {
   const user = usernameBox.value.trim() || "anon";
   const text = input.value.trim();
-
   if (!text) return;
 
-  const isCommand = await handleCommand(text);
-  if (isCommand) {
+  if (await handleCommand(text)) {
     soundCommand();
     input.value = "";
     return;
   }
 
-  push(messagesRef, {
-    user,
-    text,
-    time: Date.now()
-  });
-
+  push(messagesRef, { user, text, time: Date.now() });
   soundSend();
   input.value = "";
 }
 
 document.getElementById("sendBtn").onclick = send;
-
-input.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") send();
-});
+input.addEventListener("keydown", (e) => { if (e.key === "Enter") send(); });
 </script>
 
 </body>

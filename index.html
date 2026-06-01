@@ -3,72 +3,201 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Command Center v3.1</title>
+<title>Command Center v4.0 // Terminus</title>
 
 <style>
+  :root {
+    --bg-dark: #05070a;
+    --panel-bg: #0b111a;
+    --border-color: #1a2636;
+    --glow-color: #00ffcc;
+    --text-primary: #cbd5e1;
+    --text-muted: #4e6580;
+    --accent-red: #ff3366;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
   body {
     margin: 0;
-    font-family: monospace;
-    background: #070a0f;
-    color: #d7dde8;
+    font-family: 'Courier New', Courier, monospace;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Scanline CRT Simulation Effect */
+  body::before {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0; left: 0; bottom: 0; right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    z-index: 99999;
+    background-size: 100% 4px, 6px 100%;
+    pointer-events: none;
   }
 
   header {
-    background: #0f1622;
-    padding: 12px;
+    background: var(--panel-bg);
+    padding: 14px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #1f2a3a;
+    border-bottom: 2px solid var(--border-color);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
+
+  .logo {
+    font-weight: bold;
+    color: var(--glow-color);
+    text-shadow: 0 0 8px rgba(0, 255, 204, 0.5);
+    letter-spacing: 1px;
+  }
+
+  .main-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
   }
 
   #feed {
-    height: 60vh;
+    flex: 1;
     overflow-y: auto;
-    padding: 12px;
-    background: #0a0f18;
+    padding: 20px;
+    background: rgba(5, 7, 10, 0.95);
+    scroll-behavior: smooth;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--bg-dark);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--glow-color);
   }
 
   .msg {
-    padding: 8px;
-    margin-bottom: 6px;
-    border-left: 3px solid #2b6cff;
-    background: rgba(255,255,255,0.03);
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    background: rgba(15, 22, 34, 0.4);
+    border: 1px solid var(--border-color);
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
   }
 
   .user {
-    color: #4dd0e1;
     font-weight: bold;
   }
 
   .time {
-    color: #666;
-    font-size: 0.8em;
-    margin-left: 6px;
+    color: var(--text-muted);
+    font-size: 0.75em;
   }
 
+  .text-payload {
+    word-break: break-word;
+    line-height: 1.4;
+  }
+
+  /* Sidebar Radar Panel */
+  #radar-panel {
+    width: 260px;
+    background: var(--panel-bg);
+    border-left: 2px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+  }
+
+  .panel-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  #radar-list {
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .operator-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 13px;
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--glow-color);
+    box-shadow: 0 0 6px var(--glow-color);
+  }
+
+  /* Footer Controls & Inputs */
   #inputBar {
     display: flex;
-    gap: 6px;
-    padding: 10px;
-    background: #0f1622;
-    border-top: 1px solid #1f2a3a;
+    gap: 10px;
+    padding: 16px 20px;
+    background: var(--panel-bg);
+    border-top: 2px solid var(--border-color);
+    align-items: center;
   }
 
   input, button {
-    font-family: monospace;
-    border: none;
-    border-radius: 6px;
-    padding: 10px;
+    font-family: 'Courier New', Courier, monospace;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 12px;
+    outline: none;
+    transition: all 0.2s ease;
   }
 
   input {
-    background: #141c2b;
+    background: #090d14;
     color: #fff;
   }
 
+  input:focus {
+    border-color: var(--glow-color);
+    box-shadow: 0 0 8px rgba(0, 255, 204, 0.2);
+  }
+
   #usernameBox {
-    width: 140px;
+    width: 160px;
   }
 
   #msgInput {
@@ -76,24 +205,33 @@
   }
 
   button {
-    background: #d32f2f;
-    color: white;
+    background: rgba(26, 38, 54, 0.5);
+    color: var(--text-primary);
     cursor: pointer;
+    font-weight: bold;
   }
 
   button:hover {
-    background: #a82525;
+    background: var(--border-color);
+    color: var(--glow-color);
   }
 
-  /* presence panel */
-  #radar {
-    padding: 10px;
-    background: #0f1622;
-    border-top: 1px solid #1f2a3a;
-    font-size: 12px;
-    color: #4dd0e1;
-    max-height: 20vh;
-    overflow-y: auto;
+  #sendBtn {
+    background: var(--glow-color);
+    color: var(--bg-dark);
+    border: none;
+    padding: 12px 24px;
+  }
+
+  #sendBtn:hover {
+    background: #00cca3;
+    color: var(--bg-dark);
+    box-shadow: 0 0 12px rgba(0, 255, 204, 0.4);
+  }
+
+  #muteBtn {
+    padding: 6px 10px;
+    font-size: 14px;
   }
 </style>
 </head>
@@ -101,20 +239,25 @@
 <body>
 
 <header>
-  <div>🛰 Command Center v3.1</div>
-  <div>
-    User:
-    <input id="usernameBox" placeholder="operator name" />
-    <button id="muteBtn">🔊</button>
+  <div class="logo">🛰 TERMINUS_COMMAND_CENTER // v4.0</div>
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <input id="usernameBox" placeholder="SYS_OPERATOR_ID" />
+    <button id="muteBtn" title="Toggle System Audio">🔊</button>
   </div>
 </header>
 
-<div id="feed"></div>
-<div id="radar">🟢 OPERATOR GRID: initializing...</div>
+<div class="main-container">
+  <div id="feed"></div>
+  
+  <div id="radar-panel">
+    <div class="panel-title"><span class="status-dot"></span> Active Matrix Nodes</div>
+    <div id="radar-list"></div>
+  </div>
+</div>
 
 <div id="inputBar">
-  <input id="msgInput" placeholder="Type message or /command..." />
-  <button id="sendBtn">Send</button>
+  <input id="msgInput" placeholder="Pass telemetry data or clear grid with /clear..." autocomplete="off" />
+  <button id="sendBtn">EXECUTE</button>
 </div>
 
 <script type="module">
@@ -127,7 +270,8 @@ import {
   remove,
   set,
   onDisconnect,
-  onValue
+  onValue,
+  get
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 
 /* ================= FIREBASE ================= */
@@ -147,22 +291,35 @@ const db = getDatabase(app);
 const messagesRef = ref(db, "messages");
 const presenceRef = ref(db, "presence");
 
-/* ================= UI ================= */
+/* ================= UI ELEMENTS ================= */
 const feed = document.getElementById("feed");
 const input = document.getElementById("msgInput");
 const usernameBox = document.getElementById("usernameBox");
 const muteBtn = document.getElementById("muteBtn");
-const radar = document.getElementById("radar");
+const radarList = document.getElementById("radar-list");
 
-/* ================= USER ================= */
-usernameBox.value = localStorage.getItem("cmd_user") || "";
+/* ================= OPERATOR CONFIG ================= */
+usernameBox.value = localStorage.getItem("cmd_user") || "OPERATOR_" + Math.floor(1000 + Math.random() * 9000);
 
-usernameBox.addEventListener("input", () => {
-  localStorage.setItem("cmd_user", usernameBox.value.trim());
+// Deterministic colors for handles to make distinct identities stand out visually
+function getUsernameColor(username) {
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) {
+    hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const h = Math.abs(hash) % 360;
+  return `hsl(${h}, 85%, 65%)`;
+}
+
+usernameBox.addEventListener("change", () => {
+  let name = usernameBox.value.trim();
+  if(!name) name = "anon";
+  usernameBox.value = name;
+  localStorage.setItem("cmd_user", name);
   setOnline();
 });
 
-/* ================= AUDIO ================= */
+/* ================= SYNTHESIZED SYSTEM AUDIO ================= */
 let soundEnabled = true;
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -170,7 +327,7 @@ document.body.addEventListener("click", () => {
   if (audioCtx.state === "suspended") audioCtx.resume();
 });
 
-function tone(freq, duration = 100, type = "sine", volume = 0.05) {
+function tone(freq, duration = 100, type = "sine", volume = 0.03) {
   if (!soundEnabled) return;
 
   const osc = audioCtx.createOscillator();
@@ -184,20 +341,23 @@ function tone(freq, duration = 100, type = "sine", volume = 0.05) {
   gain.connect(audioCtx.destination);
 
   osc.start();
+  gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration/1000);
+  
   setTimeout(() => osc.stop(), duration);
 }
 
-const soundSend = () => tone(520, 60, "square");
-const soundReceive = () => tone(880, 80, "sine");
-const soundCommand = () => tone(660, 90, "triangle");
-const soundDanger = () => tone(140, 300, "sawtooth", 0.08);
+const soundSend = () => tone(600, 80, "triangle", 0.04);
+const soundReceive = () => tone(900, 50, "sine", 0.03);
+const soundCommand = () => tone(440, 150, "square", 0.02);
+const soundDanger = () => tone(120, 400, "sawtooth", 0.06);
 
 muteBtn.onclick = () => {
   soundEnabled = !soundEnabled;
   muteBtn.textContent = soundEnabled ? "🔊" : "🔇";
 };
 
-/* ================= SAFE TEXT ================= */
+/* ================= SECURITY & XSS PROTECTION ================= */
 function clean(str) {
   return String(str)
     .replaceAll("&", "&amp;")
@@ -205,34 +365,63 @@ function clean(str) {
     .replaceAll(">", "&gt;");
 }
 
-/* ================= MESSAGES ================= */
-let lastKey = null;
+/* ================= CHAT LOG ENGINE ================= */
+let itemsMap = new Map();
 
-function addMessage(data, key) {
+function createMessageElement(data, key) {
   const div = document.createElement("div");
   div.className = "msg";
+  div.setAttribute("data-key", key);
 
-  const time = new Date(data.time).toLocaleTimeString();
+  const timeStr = new Date(data.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+  const userColor = getUsernameColor(data.user);
 
   div.innerHTML = `
-    <span class="user">${clean(data.user)}</span>
-    <span class="time">[${time}]</span><br>
-    ${clean(data.text)}
+    <div class="msg-meta">
+      <span class="user" style="color: ${userColor}">${clean(data.user)}</span>
+      <span class="time">${timeStr}</span>
+    </div>
+    <div class="text-payload">${clean(data.text)}</div>
   `;
-
-  feed.appendChild(div);
-  feed.scrollTop = feed.scrollHeight;
-
-  lastKey = key;
+  return div;
 }
 
 onChildAdded(messagesRef, (snap) => {
-  addMessage(snap.val(), snap.key);
+  const key = snap.key;
+  const data = snap.val();
+  
+  // Prevent duplicate visual rendering loops
+  if (itemsMap.has(key)) return;
+
+  const msgEl = createMessageElement(data, key);
+  feed.appendChild(msgEl);
+  itemsMap.set(key, msgEl);
+  
+  // Clean container scrolling auto-lock 
+  feed.scrollTop = feed.scrollHeight;
   soundReceive();
 });
 
-/* ================= PRESENCE ================= */
-const myId = crypto.randomUUID?.() || String(Date.now());
+// Sync real-time updates for commands executing /wipe or deletions from other terminals
+onValue(messagesRef, (snap) => {
+  if (!snap.exists()) {
+    feed.innerHTML = "";
+    itemsMap.clear();
+    return;
+  }
+  
+  // Remove items locally that are no longer present in DB architecture
+  const currentKeys = Object.keys(snap.val());
+  for (let localKey of itemsMap.keys()) {
+    if (!currentKeys.includes(localKey)) {
+      itemsMap.get(localKey).remove();
+      itemsMap.delete(localKey);
+    }
+  }
+});
+
+/* ================= REAL-TIME GRID MATRIX PRESENCE ================= */
+const myId = crypto.randomUUID?.() || String(Date.now() + Math.random());
 const myPresenceRef = ref(db, `presence/${myId}`);
 
 function setOnline() {
@@ -244,40 +433,52 @@ function setOnline() {
     lastSeen: Date.now()
   });
 
-  onDisconnect(myPresenceRef).set({
-    user: name,
-    status: "offline",
-    lastSeen: Date.now()
-  });
+  onDisconnect(myPresenceRef).remove();
 }
 
+// Initial presence execution setup
 setOnline();
+// Heartbeat routine to drop stale nodes gracefully
+setInterval(setOnline, 30000);
 
-/* live radar */
 onValue(presenceRef, (snap) => {
   const data = snap.val() || {};
+  radarList.innerHTML = "";
 
-  const online = Object.values(data).filter(u => u.status === "online");
-
-  radar.innerHTML = `
-    🟢 ONLINE OPERATORS (${online.length})<br><br>
-    ${online.map(u => "• " + clean(u.user)).join("<br>")}
-  `;
+  Object.entries(data).forEach(([id, profile]) => {
+    if (profile.status === "online") {
+      const userColor = getUsernameColor(profile.user);
+      const row = document.createElement("div");
+      row.className = "operator-row";
+      row.innerHTML = `
+        <span class="status-dot"></span>
+        <span style="color: ${userColor}">${clean(profile.user)}</span>
+        ${id === myId ? '<span style="font-size:9px; color:var(--text-muted)">[YOU]</span>' : ''}
+      `;
+      radarList.appendChild(row);
+    }
+  });
 });
 
-/* ================= COMMANDS ================= */
-function handleCommand(text) {
-  const cmd = text.toLowerCase();
+/* ================= SUBSYSTEM COMMAND PROCESSING ================= */
+async function handleCommand(text) {
+  const cmd = text.trim().toLowerCase();
 
   if (cmd === "/clear") {
     feed.innerHTML = "";
+    itemsMap.clear();
     return true;
   }
 
   if (cmd === "/del last") {
-    if (lastKey) {
-      remove(ref(db, "messages/" + lastKey));
-      feed.lastChild?.remove();
+    // Queries remote node architecture safely instead of tracking unstable mutable keys
+    const snap = await get(messagesRef);
+    if (snap.exists()) {
+      const keys = Object.keys(snap.val());
+      const absoluteLastKey = keys[keys.length - 1];
+      if (absoluteLastKey) {
+        remove(ref(db, "messages/" + absoluteLastKey));
+      }
     }
     return true;
   }
@@ -285,21 +486,21 @@ function handleCommand(text) {
   if (cmd === "/wipe") {
     soundDanger();
     remove(messagesRef);
-    feed.innerHTML = "";
     return true;
   }
 
   return false;
 }
 
-/* ================= SEND ================= */
-function send() {
+/* ================= CENTRAL ROUTER DISPATCH ================= */
+async function send() {
   const user = usernameBox.value.trim() || "anon";
   const text = input.value.trim();
 
   if (!text) return;
 
-  if (handleCommand(text)) {
+  const isCommand = await handleCommand(text);
+  if (isCommand) {
     soundCommand();
     input.value = "";
     return;
@@ -323,4 +524,4 @@ input.addEventListener("keydown", (e) => {
 </script>
 
 </body>
-</html>v2.2sound
+</html>

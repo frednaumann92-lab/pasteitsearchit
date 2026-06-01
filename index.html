@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Command Network v4.6 Login Gate</title>
+<title>Command Network v5 Stable Reset</title>
 
 <style>
 body {
@@ -13,76 +13,33 @@ body {
   color: #d7dde8;
 }
 
-/* LOGIN OVERLAY */
-#authScreen {
-  position: fixed;
-  inset: 0;
-  background: #05070c;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 12px;
-  z-index: 999;
-}
-
-#authBox {
-  background: #0f1622;
-  padding: 20px;
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 280px;
-}
-
-input, button {
-  font-family: monospace;
-  padding: 10px;
-  border: none;
-  border-radius: 6px;
-}
-
-input {
-  background: #141c2b;
-  color: white;
-}
-
-button {
-  background: #d32f2f;
-  color: white;
-  cursor: pointer;
-}
-
-/* MAIN APP */
-#app {
-  display: none;
-}
-
 header {
   background: #0f1622;
   padding: 10px;
   display: flex;
-  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
   border-bottom: 1px solid #1f2a3a;
 }
 
 #layout {
   display: grid;
-  grid-template-columns: 220px 1fr 260px;
+  grid-template-columns: 220px 1fr;
   height: 85vh;
 }
 
 #channels {
   background: #0a0f18;
   padding: 10px;
+  border-right: 1px solid #1f2a3a;
 }
 
 .channel {
   padding: 8px;
   margin-bottom: 6px;
-  background: rgba(255,255,255,0.03);
   cursor: pointer;
+  background: rgba(255,255,255,0.03);
 }
 
 #feed {
@@ -106,52 +63,64 @@ header {
   border-top: 1px solid #1f2a3a;
 }
 
-#msg {
-  flex: 1;
+input, button {
+  font-family: monospace;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+}
+
+input {
   background: #141c2b;
   color: white;
+  flex: 1;
+}
+
+button {
+  background: #d32f2f;
+  color: white;
+  cursor: pointer;
+}
+
+#status {
+  margin-left: auto;
+  padding: 4px 8px;
+  background: #111a2a;
+  border-radius: 6px;
 }
 </style>
 </head>
 
 <body>
 
-<!-- LOGIN SCREEN -->
-<div id="authScreen">
-  <h2>🛰 Command Network</h2>
-
-  <div id="authBox">
-    <input id="email" placeholder="email" />
-    <input id="pass" type="password" placeholder="password" />
-
-    <button id="loginBtn">Login</button>
-    <button id="guestBtn">Enter as Guest</button>
-  </div>
-</div>
-
-<!-- MAIN APP -->
-<div id="app">
-
 <header>
-  <div>🛰 Command Network v4.6</div>
+  <div>🛰 Command Network v5 Stable</div>
+
+  <input id="email" placeholder="email" />
+  <input id="pass" type="password" placeholder="password" />
+
+  <button id="loginBtn">Login</button>
+  <button id="guestBtn">Guest</button>
+  <button id="logoutBtn">Logout</button>
+
   <div id="status">offline</div>
 </header>
 
 <div id="layout">
+
   <div id="channels">
     <div class="channel" data-ch="alpha"># alpha</div>
     <div class="channel" data-ch="bravo"># bravo</div>
+    <div class="channel" data-ch="charlie"># charlie</div>
   </div>
 
   <div id="feed"></div>
-  <div></div>
+
 </div>
 
 <div id="inputBar">
-  <input id="msg" placeholder="message..." />
+  <input id="msg" placeholder="message or /wipe /clear..." />
   <button id="send">SEND</button>
-</div>
-
 </div>
 
 <script type="module">
@@ -160,13 +129,15 @@ import {
   getDatabase,
   ref,
   push,
-  onChildAdded
+  onChildAdded,
+  remove
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 
 import {
   getAuth,
   signInWithEmailAndPassword,
   signInAnonymously,
+  signOut,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 
@@ -181,52 +152,60 @@ const app = initializeApp({
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-/* STATE */
+/* ADMIN */
+const ADMIN_UIDS = [
+  "uiXgz4sgYfo5TjSl1uLc9Xmypk7Xv1"
+];
+
 let channel = "alpha";
 let user = null;
+let role = "guest";
 
 /* UI */
-const authScreen = document.getElementById("authScreen");
-const appUI = document.getElementById("app");
-const status = document.getElementById("status");
 const feed = document.getElementById("feed");
 const msg = document.getElementById("msg");
+const status = document.getElementById("status");
 
-/* LOGIN */
-document.getElementById("loginBtn").onclick = async () => {
-  try {
-    await signInWithEmailAndPassword(
-      auth,
-      email.value,
-      pass.value
-    );
-  } catch(e) {
-    alert("Login failed");
-    console.error(e);
-  }
-};
+const messagesRef = ch => ref(db, "channels/" + ch);
 
-/* GUEST */
-document.getElementById("guestBtn").onclick = async () => {
-  await signInAnonymously(auth);
-};
-
-/* AUTH STATE */
+/* AUTH */
 onAuthStateChanged(auth, u => {
-  if (!u) return;
-
   user = u;
 
-  authScreen.style.display = "none";
-  appUI.style.display = "block";
+  if (!u) {
+    status.textContent = "offline";
+    return;
+  }
 
-  status.textContent = u.isAnonymous ? "guest" : "user";
+  role = u.isAnonymous
+    ? "guest"
+    : (ADMIN_UIDS.includes(u.uid) ? "admin" : "operator");
+
+  status.textContent = role;
 
   listen();
 });
 
-/* DB */
-const messagesRef = ch => ref(db, "channels/" + ch);
+/* LOGIN */
+document.getElementById("loginBtn").onclick = async () => {
+  await signInWithEmailAndPassword(
+    auth,
+    email.value,
+    pass.value
+  );
+};
+
+/* GUEST */
+document.getElementById("guestBtn").onclick = () => {
+  signInAnonymously(auth);
+};
+
+/* LOGOUT (FIXED) */
+document.getElementById("logoutBtn").onclick = async () => {
+  await signOut(auth);
+  feed.innerHTML = "";
+  status.textContent = "logged out";
+};
 
 /* LISTEN */
 function listen() {
@@ -240,11 +219,10 @@ function listen() {
     div.innerHTML = `<b>${d.user}</b><br>${d.text}`;
 
     feed.appendChild(div);
-    feed.scrollTop = feed.scrollHeight;
   });
 }
 
-/* CHANNEL SWITCH */
+/* CHANNELS */
 document.querySelectorAll(".channel").forEach(el => {
   el.onclick = () => {
     channel = el.dataset.ch;
@@ -253,11 +231,19 @@ document.querySelectorAll(".channel").forEach(el => {
 });
 
 /* SEND */
-document.getElementById("send").onclick = () => {
+function send() {
   if (!user) return;
 
   const text = msg.value.trim();
   if (!text) return;
+
+  /* ADMIN COMMANDS */
+  if (role === "admin" && text === "/wipe") {
+    remove(messagesRef(channel));
+    feed.innerHTML = "";
+    msg.value = "";
+    return;
+  }
 
   push(messagesRef(channel), {
     user: user.email || "guest",
@@ -266,13 +252,15 @@ document.getElementById("send").onclick = () => {
   });
 
   msg.value = "";
-};
+}
+
+document.getElementById("send").onclick = send;
 
 /* ENTER KEY */
 msg.addEventListener("keydown", e => {
   if (e.key === "Enter") {
     e.preventDefault();
-    document.getElementById("send").click();
+    send();
   }
 });
 

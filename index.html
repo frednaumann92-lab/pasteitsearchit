@@ -1,344 +1,707 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Operator Command Deck</title>
-  
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Command Center v4.2 // Multi-Theme Matrix & AI Deck</title>
 
-  <style>
-    :root {
-      --bg-main: #0d0e12;
-      --bg-panel: #16171d;
-      --border-color: #262930;
-      --text-main: #e2e4e9;
-      --text-muted: #626775;
-      --accent-green: #00ff66;
-      --accent-purple: #bc6ff1;
-      --accent-red: #ff3333;
-    }
-    
-    .theme-matrix {
-      --bg-main: #020202;
-      --bg-panel: #050805;
-      --border-color: #0f2d11;
-      --text-main: #33ff33;
-      --text-muted: #145a19;
-      --accent-green: #33ff33;
-      --accent-purple: #00ff66;
-    }
+<style>
+  /* Default Cyberpunk Theme Variables */
+  :root {
+    --bg-dark: #05070a;
+    --panel-bg: #0b111a;
+    --border-color: #1a2636;
+    --glow-color: #00ffcc;
+    --text-primary: #cbd5e1;
+    --text-muted: #4e6580;
+    --accent-red: #ff3366;
+    --accent-purple: #bc6ff1;
+    --accent-green: #00ff66;
+  }
 
-    .theme-cyber {
-      --bg-main: #0e0014;
-      --bg-panel: #1a0026;
-      --border-color: #ff0055;
-      --text-main: #00f0ff;
-      --text-muted: #730046;
-      --accent-green: #00f0ff;
-      --accent-purple: #ff0055;
-    }
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background-color: var(--bg-main);
-      color: var(--text-main);
-      font-family: 'Courier New', Courier, monospace;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      padding: 10px;
-      transition: background-color 0.2s, color 0.2s;
-    }
-    
-    #workspace {
-      display: flex;
-      flex: 1;
-      gap: 10px;
-      margin-bottom: 10px;
-      min-height: 0;
-    }
+  body {
+    font-family: 'Courier New', Courier, monospace;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    transition: background 0.3s ease, color 0.3s ease;
+    padding: 10px;
+  }
 
-    #feed {
-      flex: 3;
-      overflow-y: auto;
-      padding: 10px;
-      background: var(--bg-panel);
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-    }
+  /* Scanline CRT Simulation Effect */
+  body::before {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0; left: 0; bottom: 0; right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    z-index: 99999;
+    background-size: 100% 4px, 6px 100%;
+    pointer-events: none;
+  }
 
-    #online-panel {
-      flex: 1;
-      background: var(--bg-panel);
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-    }
+  header {
+    background: var(--panel-bg);
+    padding: 14px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    transition: background 0.3s ease, border-color 0.3s ease;
+    margin-bottom: 10px;
+  }
 
-    .panel-header {
-      font-weight: bold;
-      color: var(--accent-green);
-      border-bottom: 1px solid var(--border-color);
-      padding-bottom: 5px;
-      margin-bottom: 10px;
-      font-size: 0.9em;
-    }
+  .logo {
+    font-weight: bold;
+    color: var(--glow-color);
+    text-shadow: 0 0 8px var(--glow-color);
+    letter-spacing: 1px;
+    transition: color 0.3s ease, text-shadow 0.3s ease;
+  }
 
-    .operator-list {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      font-size: 0.9em;
-    }
+  .main-container {
+    display: flex;
+    flex: 1;
+    gap: 10px;
+    overflow: hidden;
+    margin-bottom: 10px;
+    min-height: 0;
+  }
 
-    .operator-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+  #feed {
+    flex: 3;
+    overflow-y: auto;
+    padding: 20px;
+    background: rgba(5, 7, 10, 0.95);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    scroll-behavior: smooth;
+  }
 
-    .status-dot {
-      width: 6px;
-      height: 6px;
-      background-color: var(--accent-green);
-      border-radius: 50%;
-    }
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--bg-dark);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--glow-color);
+  }
 
-    .msg {
-      margin-bottom: 12px;
-      line-height: 1.5;
-      padding-left: 8px;
-    }
-    .msg-meta {
-      font-size: 0.85em;
-      margin-bottom: 3px;
-    }
-    .user { color: var(--accent-green); font-weight: bold; }
-    .time { color: var(--text-muted); margin-left: 8px; }
-    .text-payload { white-space: pre-wrap; word-break: break-word; }
-    .sys-alert { color: var(--accent-purple); }
+  .msg {
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    border-radius: 4px;
+    background: rgba(15, 22, 34, 0.4);
+    border: 1px solid var(--border-color);
+    line-height: 1.5;
+    animation: fadeIn 0.2s ease-out;
+    transition: background 0.3s ease, border-color 0.3s ease;
+  }
 
-    #console-bar {
-      display: flex;
-      background: var(--bg-panel);
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      padding: 12px;
-      align-items: center;
-    }
-    #prompt-indicator {
-      color: var(--accent-green);
-      font-weight: bold;
-      margin-right: 10px;
-      user-select: none;
-    }
-    #cmd-input {
-      flex: 1;
-      background: transparent;
-      border: none;
-      color: var(--text-main);
-      font-family: inherit;
-      font-size: 1em;
-      outline: none;
-    }
-  </style>
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+    font-size: 0.85em;
+  }
+
+  .user {
+    font-weight: bold;
+  }
+
+  .time {
+    color: var(--text-muted);
+    font-size: 0.85em;
+    margin-left: 8px;
+  }
+
+  .text-payload {
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.4;
+  }
+
+  .sys-alert {
+    color: var(--glow-color);
+    font-style: italic;
+    border-left: 3px solid var(--glow-color);
+    padding-left: 8px;
+  }
+
+  /* Sidebar Radar Panel */
+  #radar-panel {
+    flex: 1;
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+    transition: background 0.3s ease, border-color 0.3s ease;
+  }
+
+  .panel-title {
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: var(--glow-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  #radar-list {
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.9em;
+  }
+
+  .operator-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 0;
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--glow-color);
+    box-shadow: 0 0 6px var(--glow-color);
+    transition: background 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  /* Footer Controls & Inputs */
+  #inputBar {
+    display: flex;
+    gap: 10px;
+    padding: 12px;
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    align-items: center;
+    transition: background 0.3s ease, border-color 0.3s ease;
+  }
+
+  input, button {
+    font-family: 'Courier New', Courier, monospace;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 12px;
+    outline: none;
+    transition: all 0.2s ease;
+    font-size: 1em;
+  }
+
+  input {
+    background: #090d14;
+    color: #fff;
+  }
+
+  input:focus {
+    border-color: var(--glow-color);
+    box-shadow: 0 0 8px rgba(0, 255, 204, 0.2);
+  }
+
+  #usernameBox {
+    width: 160px;
+  }
+
+  #msgInput {
+    flex: 1;
+  }
+
+  button {
+    background: rgba(26, 38, 54, 0.5);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-weight: bold;
+  }
+
+  button:hover {
+    background: var(--border-color);
+    color: var(--glow-color);
+  }
+
+  #sendBtn {
+    background: var(--glow-color);
+    color: var(--bg-dark);
+    border: none;
+    padding: 12px 24px;
+  }
+
+  #sendBtn:hover {
+    background: #00cca3;
+    color: var(--bg-dark);
+    box-shadow: 0 0 12px rgba(0, 255, 204, 0.4);
+  }
+
+  #muteBtn {
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+</style>
 </head>
+
 <body>
 
-  <div id="workspace">
-    <div id="feed">
-      <div class="msg">
-        <div class="msg-meta"><span class="user">[SYSTEM]</span><span class="time">CORE_READY</span></div>
-        <div class="text-payload sys-alert">>> Secure terminal synchronizer online. Relay matrix running...</div>
-        <div class="text-payload sys-alert">>> Active Options: /ai [query] | /theme [matrix/cyber/default] | /clear | /wipe</div>
-      </div>
-    </div>
+<header>
+  <div class="logo" id="headerLogo">🛰 TERMINUS_COMMAND_CENTER // v4.2</div>
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <input id="usernameBox" placeholder="SYS_OPERATOR_ID" autocomplete="off" />
+    <button id="muteBtn" title="Toggle System Audio">🔊</button>
+  </div>
+</header>
 
-    <div id="online-panel">
-      <div class="panel-header">ACTIVE_OPERATORS</div>
-      <ul id="users-grid" class="operator-list">
-        </ul>
+<div class="main-container">
+  <div id="feed">
+    <div class="msg">
+      <div class="msg-meta"><span class="user" style="color: var(--glow-color)">[SYSTEM]</span><span class="time">CORE_READY</span></div>
+      <div class="text-payload sys-alert">>> Terminal communications grid online. Secure Render proxy connected.</div>
+      <div class="text-payload sys-alert">>> Type /ai [your prompt] to broadcast to SHIP_AI.</div>
     </div>
   </div>
-
-  <div id="console-bar">
-    <span id="prompt-indicator">></span>
-    <input type="text" id="cmd-input" placeholder="Type data packet or enter command directive..." autofocus autocomplete="off">
+  
+  <div id="radar-panel">
+    <div class="panel-title"><span class="status-dot"></span> Active Matrix Nodes</div>
+    <div id="radar-list"></div>
   </div>
+</div>
 
-  <script>
-    const feed = document.getElementById("feed");
-    const input = document.getElementById("cmd-input");
-    const usersGrid = document.getElementById("users-grid");
+<div id="inputBar">
+  <span style="color: var(--glow-color); font-weight: bold; margin-right: 2px; user-select: none;">&gt;</span>
+  <input id="msgInput" placeholder="Type message, /ai query, or /theme [cyberpunk|matrix|retro|void]..." autocomplete="off" autofocus />
+  <button id="sendBtn">EXECUTE</button>
+</div>
 
-    function clean(str) {
-      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import {
+  getDatabase,
+  ref,
+  push,
+  onChildAdded,
+  remove,
+  set,
+  onDisconnect,
+  onValue,
+  get
+} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+
+/* ================= FIREBASE CONFIGURATION ================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyBDQGlsajY4iMxlJvZUfEvm9CnBKnHcD78",
+  authDomain: "shared-notes-f6307.firebaseapp.com",
+  databaseURL: "https://shared-notes-f6307-default-rtdb.firebaseio.com",
+  projectId: "shared-notes-f6307",
+  storageBucket: "shared-notes-f6307.firebasestorage.app",
+  messagingSenderId: "51317483112",
+  appId: "1:51317483112:web:7767ef1f15f473ce98bddd"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const messagesRef = ref(db, "messages");
+const presenceRef = ref(db, "presence");
+
+/* ================= UI NODES ================= */
+const feed = document.getElementById("feed");
+const input = document.getElementById("msgInput");
+const usernameBox = document.getElementById("usernameBox");
+const muteBtn = document.getElementById("muteBtn");
+const radarList = document.getElementById("radar-list");
+const headerLogo = document.getElementById("headerLogo");
+
+/* ================= THEME FRAMEWORK MATRIX ================= */
+const themes = {
+  cyberpunk: {
+    "--bg-dark": "#05070a",
+    "--panel-bg": "#0b111a",
+    "--border-color": "#1a2636",
+    "--glow-color": "#00ffcc",
+    "--text-primary": "#cbd5e1",
+    "--text-muted": "#4e6580",
+    "logo-text": "🛰 TERMINUS_COMMAND_CENTER // v4.2"
+  },
+  matrix: {
+    "--bg-dark": "#020502",
+    "--panel-bg": "#050f06",
+    "--border-color": "#0f3011",
+    "--glow-color": "#00ff33",
+    "--text-primary": "#a3ffa8",
+    "--text-muted": "#38823e",
+    "logo-text": "📟 NEB_MATRIX_CORE // RELOADED"
+  },
+  retro: {
+    "--bg-dark": "#120a00",
+    "--panel-bg": "#241400",
+    "--border-color": "#4d2b00",
+    "--glow-color": "#ffb300",
+    "--text-primary": "#ffe4a3",
+    "--text-muted": "#8a5c16",
+    "logo-text": "📜 AMBER_TERMINAL_VINTAGE // 1984"
+  },
+  void: {
+    "--bg-dark": "#0a050c",
+    "--panel-bg": "#140b19",
+    "--border-color": "#331340",
+    "--glow-color": "#d946ef",
+    "--text-primary": "#fae8ff",
+    "--text-muted": "#704680",
+    "logo-text": "🔮 VOID_NEXUS_SUBSYSTEM // UNKNOWN"
+  }
+};
+
+function applyTheme(themeName) {
+  const targetTheme = themes[themeName];
+  if (!targetTheme) return false;
+
+  Object.entries(targetTheme).forEach(([variable, value]) => {
+    if (variable !== "logo-text") {
+      document.documentElement.style.setProperty(variable, value);
     }
+  });
 
-    // Handles user identification strings prompts natively
-    let myUsername = localStorage.getItem("chat_username");
-    if (!myUsername) {
-      myUsername = prompt("Enter your operator handle:") || "ANONYMOUS_OP";
-      localStorage.setItem("chat_username", myUsername);
+  headerLogo.textContent = targetTheme["logo-text"];
+  localStorage.setItem("cmd_theme", themeName);
+  return true;
+}
+
+const activeTheme = localStorage.getItem("cmd_theme") || "cyberpunk";
+applyTheme(activeTheme);
+
+/* ================= IDENT PROTOCOLS ================= */
+usernameBox.value = localStorage.getItem("cmd_user") || "OPERATOR_" + Math.floor(1000 + Math.random() * 9000);
+
+function getUsernameColor(username) {
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) {
+    hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const h = Math.abs(hash) % 360;
+  return `hsl(${h}, 85%, 65%)`;
+}
+
+usernameBox.addEventListener("change", () => {
+  let name = usernameBox.value.trim();
+  if(!name) name = "anon";
+  usernameBox.value = name;
+  localStorage.setItem("cmd_user", name);
+  setOnline();
+});
+
+/* ================= SOUND ENGINE ARCHITECTURE ================= */
+let soundEnabled = true;
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+document.body.addEventListener("click", () => {
+  if (audioCtx.state === "suspended") audioCtx.resume();
+});
+
+function tone(freq, duration = 100, type = "sine", volume = 0.03) {
+  if (!soundEnabled) return;
+
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.value = volume;
+
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  osc.start();
+  gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration/1000);
+  
+  setTimeout(() => osc.stop(), duration);
+}
+
+const soundSend = () => tone(600, 80, "triangle", 0.04);
+const soundReceive = () => tone(900, 50, "sine", 0.03);
+const soundCommand = () => tone(440, 150, "square", 0.02);
+const soundDanger = () => tone(120, 400, "sawtooth", 0.06);
+
+muteBtn.onclick = () => {
+  soundEnabled = !soundEnabled;
+  muteBtn.textContent = soundEnabled ? "🔊" : "🔇";
+};
+
+/* ================= ESCAPE SECURITY LAYER ================= */
+function clean(str) {
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt bridge;");
+}
+
+/* ================= CHAT STREAM PIPELINE ================= */
+let itemsMap = new Map();
+
+function createMessageElement(data, key) {
+  const div = document.createElement("div");
+  div.className = "msg";
+  div.setAttribute("data-key", key);
+
+  const timeStr = new Date(data.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+  const userColor = getUsernameColor(data.user);
+
+  div.innerHTML = `
+    <div class="msg-meta">
+      <span class="user" style="color: ${userColor}">${clean(data.user)}</span>
+      <span class="time">${timeStr}</span>
+    </div>
+    <div class="text-payload">${clean(data.text)}</div>
+  `;
+  return div;
+}
+
+onChildAdded(messagesRef, (snap) => {
+  const key = snap.key;
+  const data = snap.val();
+  
+  if (itemsMap.has(key)) return;
+
+  const msgEl = createMessageElement(data, key);
+  feed.appendChild(msgEl);
+  itemsMap.set(key, msgEl);
+  
+  feed.scrollTop = feed.scrollHeight;
+  soundReceive();
+});
+
+onValue(messagesRef, (snap) => {
+  if (!snap.exists()) {
+    feed.innerHTML = "";
+    itemsMap.clear();
+    return;
+  }
+  
+  const currentKeys = Object.keys(snap.val());
+  for (let localKey of itemsMap.keys()) {
+    if (!currentKeys.includes(localKey)) {
+      itemsMap.get(localKey).remove();
+      itemsMap.delete(localKey);
     }
+  }
+});
 
-    // ============================================================
-    // FIXED INTEGRATION GATEWAY CONFIGURATION WITH VERIFIED LIVE API KEY
-    const firebaseConfig = {
-      apiKey: "AIzaSyDkoastsYXpC6w6mwMJFq-rCwiW1o6LVG0", 
-      authDomain: "noble-nation-455601-v2.firebaseapp.com",
-      databaseURL: "https://noble-nation-455601-v2-default-rtdb.firebaseio.com/",
-      projectId: "noble-nation-455601-v2",
-      storageBucket: "noble-nation-455601-v2.appspot.com",
-      appId: "1:51317483112:web:7767ef1f15f473ce98bddd"
-    };
-    // ============================================================
+/* ================= PRESENT MATRIX REGISTER ================= */
+const myId = crypto.randomUUID?.() || String(Date.now() + Math.random());
+const myPresenceRef = ref(db, `presence/${myId}`);
 
-    // Initialize Network Handshaking
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
-    
-    // Track Local Node Presence Coordinates
-    const myPresenceRef = database.ref("presence/" + myUsername);
-    myPresenceRef.set({ username: myUsername, status: "online" });
-    myPresenceRef.onDisconnect().remove();
+function setOnline() {
+  const name = usernameBox.value.trim() || "anon";
 
-    // Listen to changes in online operators globally
-    database.ref("presence").on("value", (snapshot) => {
-      usersGrid.innerHTML = "";
-      snapshot.forEach((child) => {
-        const userVal = child.val().username;
-        const li = document.createElement("li");
-        li.className = "operator-item";
-        li.innerHTML = `<span class="status-dot"></span><span>${clean(userVal)} ${userVal === myUsername ? "(You)" : ""}</span>`;
-        usersGrid.appendChild(li);
-      });
-      // Append persistent AI terminal presence node
-      const aiLi = document.createElement("li");
-      aiLi.className = "operator-item";
-      aiLi.innerHTML = `<span class="status-dot" style="background-color: var(--accent-purple)"></span><span style="color: var(--accent-purple)">SHIP_AI</span>`;
-      usersGrid.appendChild(aiLi);
-    });
+  set(myPresenceRef, {
+    user: name,
+    status: "online",
+    lastSeen: Date.now()
+  });
 
-    // Unified Global Text Stream Synced Callback
-    database.ref("messages").on("child_added", (snapshot) => {
-      const data = snapshot.val();
-      renderIncomingMessage(data.username || "ANONYMOUS_OP", data.text, data.timestamp);
-    });
+  onDisconnect(myPresenceRef).remove();
+}
 
-    function renderIncomingMessage(user, text, timeStr) {
-      const msgDiv = document.createElement("div");
-      msgDiv.className = "msg";
-      
-      let nameStyle = "";
-      if (user === "🤖 SHIP_AI") {
-        nameStyle = "style='color: var(--accent-purple)'";
-      } else if (user === myUsername) {
-        nameStyle = "style='color: var(--accent-green)'";
-      }
-      
-      msgDiv.innerHTML = `
-        <div class="msg-meta">
-          <span class="user" ${nameStyle}>${clean(user)}</span>
-          <span class="time">${timeStr}</span>
-        </div>
-        <div class="text-payload">${clean(text)}</div>
+setOnline();
+setInterval(setOnline, 30000);
+
+onValue(presenceRef, (snap) => {
+  const data = snap.val() || {};
+  radarList.innerHTML = "";
+
+  // Append static AI visual row component matching codebase 1
+  const aiRow = document.createElement("div");
+  aiRow.className = "operator-row";
+  aiRow.innerHTML = `
+    <span class="status-dot" style="background-color: var(--accent-purple); box-shadow: 0 0 6px var(--accent-purple);"></span>
+    <span style="color: var(--accent-purple)">SHIP_AI</span>
+  `;
+  radarList.appendChild(aiRow);
+
+  Object.entries(data).forEach(([id, profile]) => {
+    if (profile.status === "online") {
+      const userColor = getUsernameColor(profile.user);
+      const row = document.createElement("div");
+      row.className = "operator-row";
+      row.innerHTML = `
+        <span class="status-dot"></span>
+        <span style="color: ${userColor}">${clean(profile.user)}</span>
+        ${id === myId ? '<span style="font-size:9px; color:var(--text-muted)">[YOU]</span>' : ''}
       `;
-      feed.appendChild(msgDiv);
+      radarList.appendChild(row);
+    }
+  });
+});
+
+/* ================= CENTRAL SUBSYSTEM COMMAND MATRIX ================= */
+async function handleCommand(text) {
+  const cleanText = text.trim();
+  const cmd = cleanText.toLowerCase();
+
+  // Theme command switching engine
+  if (cmd.startsWith("/theme ")) {
+    const targetTheme = cleanText.split(" ")[1];
+    const success = applyTheme(targetTheme);
+    
+    if (success) {
+      const alertDiv = document.createElement("div");
+      alertDiv.className = "msg";
+      alertDiv.innerHTML = `<div class="text-payload sys-alert">>> Visual UI configuration adjusted to "${targetTheme.toUpperCase()}".</div>`;
+      feed.appendChild(alertDiv);
       feed.scrollTop = feed.scrollHeight;
     }
+    return true;
+  }
 
-    input.addEventListener("keydown", async (e) => {
-      if (e.key === "Enter") {
-        const rawText = input.value;
-        if (!rawText.trim()) return;
+  // Clear display console local buffer
+  if (cmd === "/clear") {
+    feed.innerHTML = "";
+    itemsMap.clear();
+    return true;
+  }
 
-        input.value = "";
-        const timestamp = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
-        
-        const isCommand = await handleCommand(rawText, timestamp);
-        
-        if (!isCommand) {
-          database.ref("messages").push({
-            username: myUsername,
-            text: rawText,
-            timestamp: timestamp
-          });
-        }
+  // Delete absolute last matrix node message
+  if (cmd === "/del last") {
+    const snap = await get(messagesRef);
+    if (snap.exists()) {
+      const keys = Object.keys(snap.val());
+      const absoluteLastKey = keys[keys.length - 1];
+      if (absoluteLastKey) {
+        remove(ref(db, "messages/" + absoluteLastKey));
       }
-    });
-
-    /* ================= SYSTEM CORE COMMAND INTELLIGENCE ================= */
-    async function handleCommand(text, timestamp) {
-      const cleanText = text.trim();
-      const cmd = cleanText.toLowerCase();
-
-      if (cmd === "/clear") {
-        feed.innerHTML = "";
-        return true;
-      }
-
-      if (cmd.startsWith("/theme ")) {
-        const selectedTheme = cmd.substring(7).trim();
-        document.body.className = "";
-        if (selectedTheme === "matrix") document.body.classList.add("theme-matrix");
-        if (selectedTheme === "cyber") document.body.classList.add("theme-cyber");
-        
-        const systemDiv = document.createElement("div");
-        systemDiv.className = "msg sys-alert";
-        systemDiv.innerHTML = `>> SYSTEM: UI display array reconfigured to [${selectedTheme}].`;
-        feed.appendChild(systemDiv);
-        feed.scrollTop = feed.scrollHeight;
-        return true;
-      }
-
-      if (cmd === "/wipe") {
-        database.ref("messages").remove();
-        feed.innerHTML = `<div class="msg"><div class="text-payload" style="color: var(--accent-red)">>> CRITICAL: Global logs wiped from server endpoint.</div></div>`;
-        return true;
-      }
-
-      if (cmd.startsWith("/ai ")) {
-        const aiPrompt = cleanText.substring(4).trim();
-        if (!aiPrompt) return true;
-
-        const thinkingEl = document.createElement("div");
-        thinkingEl.className = "msg";
-        thinkingEl.innerHTML = `<div class="text-payload sys-alert">>> SHIP_AI: Query routed through secure Render proxy. Computing...</div>`;
-        feed.appendChild(thinkingEl);
-        feed.scrollTop = feed.scrollHeight;
-
-        try {
-          const res = await fetch("https://pasteitsearchit.onrender.com/api/ai", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt: aiPrompt })
-          });
-          
-          const data = await res.json();
-          thinkingEl.remove();
-
-          if (data.error) throw new Error(data.error);
-
-          database.ref("messages").push({
-            username: "🤖 SHIP_AI",
-            text: data.text,
-            timestamp: timestamp
-          });
-          
-        } catch (err) {
-          thinkingEl.innerHTML = `<div class="text-payload" style="color: var(--accent-red)">>> SUBSYSTEM_FAULT: Connection refused by Render proxy container.</div>`;
-        }
-        return true;
-      }
-      return false;
     }
-  </script>
+    return true;
+  }
+
+  // Database atomic wiping mechanism
+  if (cmd === "/wipe") {
+    soundDanger();
+    remove(messagesRef);
+    return true;
+  }
+
+  // Secure Async AI Proxy Processing Sub-routine
+  if (cmd.startsWith("/ai ")) {
+    const aiPrompt = cleanText.substring(4).trim();
+    if (!aiPrompt) return true;
+
+    // Display local rendering output context instantly
+    const localUserDiv = document.createElement("div");
+    localUserDiv.className = "msg";
+    localUserDiv.innerHTML = `
+      <div class="msg-meta">
+        <span class="user" style="color: ${getUsernameColor(usernameBox.value)}">${clean(usernameBox.value.trim() || "anon")}</span>
+        <span class="time">${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})}</span>
+      </div>
+      <div class="text-payload">${clean(cleanText)}</div>
+    `;
+    feed.appendChild(localUserDiv);
+
+    const thinkingEl = document.createElement("div");
+    thinkingEl.className = "msg";
+    thinkingEl.innerHTML = `<div class="text-payload sys-alert">>> SHIP_AI: Query routed through secure Render proxy. Computing...</div>`;
+    feed.appendChild(thinkingEl);
+    feed.scrollTop = feed.scrollHeight;
+
+    try {
+      const res = await fetch("https://pasteitsearchit.onrender.com/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: aiPrompt })
+      });
+      
+      const data = await res.json();
+      thinkingEl.remove();
+
+      if (data.error) throw new Error(data.error);
+
+      const aiDiv = document.createElement("div");
+      aiDiv.className = "msg";
+      aiDiv.style.borderLeft = "3px solid var(--accent-purple)";
+      aiDiv.innerHTML = `
+        <div class="msg-meta">
+          <span class="user" style="color: var(--accent-purple)">🤖 SHIP_AI</span>
+          <span class="time">${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})}</span>
+        </div>
+        <div class="text-payload">${clean(data.text)}</div>
+      `;
+      feed.appendChild(aiDiv);
+      
+    } catch (err) {
+      thinkingEl.innerHTML = `<div class="text-payload" style="color: var(--accent-red)">>> SUBSYSTEM_FAULT: Connection dropped by Render host container.</div>`;
+    }
+    feed.scrollTop = feed.scrollHeight;
+    return true;
+  }
+
+  return false;
+}
+
+/* ================= INTERACTION DISPATCHER ROUTER ================= */
+async function send() {
+  const user = usernameBox.value.trim() || "anon";
+  const text = input.value.trim();
+
+  if (!text) return;
+
+  const isCommand = await handleCommand(text);
+  if (isCommand) {
+    soundCommand();
+    input.value = "";
+    return;
+  }
+
+  // Standard broadcast matrix distribution pipeline
+  push(messagesRef, {
+    user,
+    text,
+    time: Date.now()
+  });
+
+  soundSend();
+  input.value = "";
+}
+
+document.getElementById("sendBtn").onclick = send;
+
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") send();
+});
+</script>
+
 </body>
 </html>

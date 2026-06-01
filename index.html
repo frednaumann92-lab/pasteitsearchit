@@ -1,343 +1,176 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Operator Command Deck</title>
-  
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<script>
+const feed = document.getElementById("feed");
+const input = document.getElementById("cmd-input");
+const usersGrid = document.getElementById("users-grid");
 
-  <style>
-    :root {
-      --bg-main: #0d0e12;
-      --bg-panel: #16171d;
-      --border-color: #262930;
-      --text-main: #e2e4e9;
-      --text-muted: #626775;
-      --accent-green: #00ff66;
-      --accent-purple: #bc6ff1;
-      --accent-red: #ff3333;
-    }
-    
-    .theme-matrix {
-      --bg-main: #020202;
-      --bg-panel: #050805;
-      --border-color: #0f2d11;
-      --text-main: #33ff33;
-      --text-muted: #145a19;
-      --accent-green: #33ff33;
-      --accent-purple: #00ff66;
-    }
+/* ================= CLEAN ================= */
+function clean(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
 
-    .theme-cyber {
-      --bg-main: #0e0014;
-      --bg-panel: #1a0026;
-      --border-color: #ff0055;
-      --text-main: #00f0ff;
-      --text-muted: #730046;
-      --accent-green: #00f0ff;
-      --accent-purple: #ff0055;
-    }
+/* ================= FIREBASE ================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyBDQGlsajY4mIxlJvZUfEvm9CnBKnHcD78",
+  authDomain: "shared-notes-f6307.firebaseapp.com",
+  databaseURL: "https://shared-notes-f6307-default-rtdb.firebaseio.com",
+  projectId: "shared-notes-f6307",
+  storageBucket: "shared-notes-f6307.firebasestorage.app",
+  messagingSenderId: "51317483112",
+  appId: "1:51317483112:web:7767ef1f15f473ce98bddd"
+};
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background-color: var(--bg-main);
-      color: var(--text-main);
-      font-family: 'Courier New', Courier, monospace;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      padding: 10px;
-      transition: background-color 0.2s, color 0.2s;
-    }
-    
-    #workspace {
-      display: flex;
-      flex: 1;
-      gap: 10px;
-      margin-bottom: 10px;
-      min-height: 0;
-    }
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
 
-    #feed {
-      flex: 3;
-      overflow-y: auto;
-      padding: 10px;
-      background: var(--bg-panel);
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-    }
+/* ================= IDENTITY SYSTEM ================= */
+const myId = localStorage.getItem("op_id") || crypto.randomUUID();
+localStorage.setItem("op_id", myId);
 
-    #online-panel {
-      flex: 1;
-      background: var(--bg-panel);
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-    }
+/* LIVE USERNAME (NOW EDITABLE) */
+let username = localStorage.getItem("op_name") || "OP_ACTIVE";
 
-    .panel-header {
-      font-weight: bold;
-      color: var(--accent-green);
-      border-bottom: 1px solid var(--border-color);
-      padding-bottom: 5px;
-      margin-bottom: 10px;
-      font-size: 0.9em;
-    }
+/* ================= UI ADD: USERNAME CONTROL ================= */
+const nameBar = document.createElement("div");
+nameBar.style.cssText = `
+  position: fixed;
+  top: 8px;
+  right: 10px;
+  background: rgba(0,0,0,0.6);
+  padding: 6px;
+  border-radius: 6px;
+  font-family: monospace;
+  z-index: 9999;
+`;
 
-    .operator-list {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      font-size: 0.9em;
-    }
+nameBar.innerHTML = `
+  <span style="color:#00ff66">USER:</span>
+  <input id="nameInput" style="width:120px;background:#111;color:#fff;border:none;padding:4px;" />
+`;
 
-    .operator-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+document.body.appendChild(nameBar);
 
-    .status-dot {
-      width: 6px;
-      height: 6px;
-      background-color: var(--accent-green);
-      border-radius: 50%;
-    }
+const nameInput = document.getElementById("nameInput");
+nameInput.value = username;
 
-    .msg {
-      margin-bottom: 12px;
-      line-height: 1.5;
-      padding-left: 8px;
-    }
-    .msg-meta {
-      font-size: 0.85em;
-      margin-bottom: 3px;
-    }
-    .user { color: var(--accent-green); font-weight: bold; }
-    .time { color: var(--text-muted); margin-left: 8px; }
-    .text-payload { white-space: pre-wrap; word-break: break-word; }
-    .sys-alert { color: var(--accent-purple); }
-    
-    #console-bar {
-      display: flex;
-      background: var(--bg-panel);
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      padding: 12px;
-      align-items: center;
-    }
-    #prompt-indicator {
-      color: var(--accent-green);
-      font-weight: bold;
-      margin-right: 10px;
-      user-select: none;
-    }
-    #cmd-input {
-      flex: 1;
-      background: transparent;
-      border: none;
-      color: var(--text-main);
-      font-family: inherit;
-      font-size: 1em;
-      outline: none;
-    }
-  </style>
-</head>
-<body>
+/* ================= PRESENCE ================= */
+const presenceRef = database.ref("present_users/" + myId);
 
-  <div id="workspace">
-    <div id="feed">
-      <div class="msg">
-        <div class="msg-meta"><span class="user">[SYSTEM]</span><span class="time">CORE_READY</span></div>
-        <div class="text-payload sys-alert">>> System core operational. Multi-terminal networking online.</div>
-        <div class="text-payload sys-alert">>> Directives: /ai [prompt] | /theme [matrix/cyber/default] | /clear | /wipe</div>
-      </div>
+/* update presence whenever username changes */
+function updatePresence() {
+  presenceRef.set({
+    username,
+    status: "online",
+    t: Date.now()
+  });
+}
+
+presenceRef.onDisconnect().set({
+  username,
+  status: "offline",
+  t: Date.now()
+});
+
+/* typing username updates LIVE */
+nameInput.addEventListener("input", () => {
+  username = nameInput.value.trim() || "OP_ACTIVE";
+  localStorage.setItem("op_name", username);
+  updatePresence();
+});
+
+/* init presence */
+updatePresence();
+
+/* ================= MESSAGES ================= */
+function renderIncomingMessage(user, text, timeStr) {
+  const msgDiv = document.createElement("div");
+  msgDiv.className = "msg";
+
+  msgDiv.innerHTML = `
+    <div class="msg-meta">
+      <span class="user">${clean(user)}</span>
+      <span class="time">${timeStr}</span>
     </div>
+    <div class="text-payload">${clean(text)}</div>
+  `;
 
-    <div id="online-panel">
-      <div class="panel-header">ACTIVE_OPERATORS</div>
-      <ul id="users-grid" class="operator-list">
-        <li class="operator-item"><span class="status-dot"></span><span id="local-user-display">OP_ACTIVE (You)</span></li>
-        <li class="operator-item"><span class="status-dot" style="background-color: var(--accent-purple)"></span><span style="color: var(--accent-purple)">SHIP_AI</span></li>
-      </ul>
-    </div>
-  </div>
+  feed.appendChild(msgDiv);
+  feed.scrollTop = feed.scrollHeight;
+}
 
-  <div id="console-bar">
-    <span id="prompt-indicator">></span>
-    <input type="text" id="cmd-input" placeholder="Enter network package or directive..." autofocus autocomplete="off">
-  </div>
+/* realtime messages */
+database.ref("messages").on("child_added", snap => {
+  const d = snap.val();
+  if (!d) return;
 
-  <script>
-    const feed = document.getElementById("feed");
-    const input = document.getElementById("cmd-input");
-    const usersGrid = document.getElementById("users-grid");
+  renderIncomingMessage(
+    d.username || "UNKNOWN_OP",
+    d.text || "",
+    d.timestamp || ""
+  );
+});
 
-    function clean(str) {
-      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    }
+/* ================= PRESENCE PANEL ================= */
+database.ref("present_users").on("value", snap => {
+  usersGrid.innerHTML = `
+    <li class="operator-item">
+      <span class="status-dot"></span>
+      <span>${clean(username)} (You)</span>
+    </li>
+  `;
 
-    // Attempt to automatically extract your previous credentials if saved in windows memory
-    let firebaseConfig = window.firebaseConfig || null;
-    let database = null;
+  snap.forEach(child => {
+    const u = child.val();
+    if (!u || child.key === myId) return;
 
-    if (firebaseConfig) {
-      try {
-        firebase.initializeApp(firebaseConfig);
-        database = firebase.database();
-        
-        // Dynamic Multiplayer Listener
-        database.ref("messages").on("child_added", (snapshot) => {
-          const data = snapshot.val();
-          renderIncomingMessage(data.username || "UNKNOWN_OP", data.text, data.timestamp);
-        });
+    const li = document.createElement("li");
+    li.className = "operator-item";
+    li.innerHTML = `
+      <span class="status-dot"></span>
+      <span>${clean(u.username)}</span>
+    `;
+    usersGrid.appendChild(li);
+  });
+});
 
-        // Dynamic Presence Listener for other computers
-        database.ref("present_users").on("value", (snapshot) => {
-          // Keep base users, add external operators dynamically
-          usersGrid.innerHTML = `
-            <li class="operator-item"><span class="status-dot"></span><span>OP_ACTIVE (You)</span></li>
-            <li class="operator-item"><span class="status-dot" style="background-color: var(--accent-purple)"></span><span style="color: var(--accent-purple)">SHIP_AI</span></li>
-          `;
-          snapshot.forEach((child) => {
-            if(child.val().username !== "OP_ACTIVE") {
-              const li = document.createElement("li");
-              li.className = "operator-item";
-              li.innerHTML = `<span class="status-dot"></span><span>${clean(child.val().username)}</span>`;
-              usersGrid.appendChild(li);
-            }
-          });
-        });
-      } catch (e) {
-        console.log("Network gateway linking paused.");
-      }
-    }
+/* ================= COMMANDS ================= */
+async function handleCommand(text, timestamp) {
+  const cmd = text.trim().toLowerCase();
 
-    function renderIncomingMessage(user, text, timeStr) {
-      const msgDiv = document.createElement("div");
-      msgDiv.className = "msg";
-      
-      // Determine user styling
-      let nameStyle = "";
-      if (user === "🤖 SHIP_AI") nameStyle = "style='color: var(--accent-purple)'";
-      
-      msgDiv.innerHTML = `
-        <div class="msg-meta">
-          <span class="user" ${nameStyle}>${clean(user)}</span>
-          <span class="time">${timeStr}</span>
-        </div>
-        <div class="text-payload">${clean(text)}</div>
-      `;
-      feed.appendChild(msgDiv);
-      feed.scrollTop = feed.scrollHeight;
-    }
+  if (cmd === "/clear") {
+    feed.innerHTML = "";
+    return true;
+  }
 
-    input.addEventListener("keydown", async (e) => {
-      if (e.key === "Enter") {
-        const rawText = input.value;
-        if (!rawText.trim()) return;
+  if (cmd === "/wipe") {
+    database.ref("messages").remove();
+    feed.innerHTML = "";
+    return true;
+  }
 
-        input.value = "";
-        const timestamp = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  return false;
+}
 
-        const isCommand = await handleCommand(rawText, timestamp);
-        
-        if (!isCommand) {
-          if (database) {
-            database.ref("messages").push({
-              username: "OP_ACTIVE",
-              text: rawText,
-              timestamp: timestamp
-            });
-          } else {
-            // Instant local render so you never lose usernames or layout visibility
-            renderIncomingMessage("OP_ACTIVE", rawText, timestamp);
-          }
-        }
-      }
+/* ================= SEND ================= */
+input.addEventListener("keydown", async (e) => {
+  if (e.key !== "Enter") return;
+
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = "";
+  const timestamp = new Date().toLocaleTimeString();
+
+  const isCommand = await handleCommand(text, timestamp);
+
+  if (!isCommand) {
+    database.ref("messages").push({
+      username,
+      text,
+      timestamp
     });
-
-    /* ================= SYSTEM CORE COMMAND INTELLIGENCE ================= */
-    async function handleCommand(text, timestamp) {
-      const cleanText = text.trim();
-      const cmd = cleanText.toLowerCase();
-
-      // Restored: /clear command
-      if (cmd === "/clear") {
-        feed.innerHTML = "";
-        return true;
-      }
-
-      // Restored: /theme command
-      if (cmd.startsWith("/theme ")) {
-        const selectedTheme = cmd.substring(7).trim();
-        document.body.className = "";
-        if (selectedTheme === "matrix") document.body.classList.add("theme-matrix");
-        if (selectedTheme === "cyber") document.body.classList.add("theme-cyber");
-        
-        const systemDiv = document.createElement("div");
-        systemDiv.className = "msg sys-alert";
-        systemDiv.innerHTML = `>> SYSTEM: UI display array reconfigured to [${selectedTheme}].`;
-        feed.appendChild(systemDiv);
-        feed.scrollTop = feed.scrollHeight;
-        return true;
-      }
-
-      // Restored: /wipe command
-      if (cmd === "/wipe") {
-        if (database) database.ref("messages").remove();
-        feed.innerHTML = `<div class="msg"><div class="text-payload" style="color: var(--accent-red)">>> CRITICAL: Global logs wiped from unified relay database.</div></div>`;
-        return true;
-      }
-
-      // Secure Render AI Proxy Channel
-      if (cmd.startsWith("/ai ")) {
-        const aiPrompt = cleanText.substring(4).trim();
-        if (!aiPrompt) return true;
-
-        const thinkingEl = document.createElement("div");
-        thinkingEl.className = "msg";
-        thinkingEl.innerHTML = `<div class="text-payload sys-alert">>> SHIP_AI: Query routed through secure Render proxy. Computing...</div>`;
-        feed.appendChild(thinkingEl);
-        feed.scrollTop = feed.scrollHeight;
-
-        try {
-          const res = await fetch("https://pasteitsearchit.onrender.com/api/ai", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt: aiPrompt })
-          });
-          
-          const data = await res.json();
-          thinkingEl.remove();
-
-          if (data.error) throw new Error(data.error);
-
-          const aiPayload = {
-            username: "🤖 SHIP_AI",
-            text: data.text,
-            timestamp: timestamp
-          };
-
-          if (database) {
-            database.ref("messages").push(aiPayload);
-          } else {
-            renderIncomingMessage(aiPayload.username, aiPayload.text, aiPayload.timestamp);
-          }
-          
-        } catch (err) {
-          thinkingEl.innerHTML = `<div class="text-payload" style="color: var(--accent-red)">>> SUBSYSTEM_FAULT: Connection refused by Render proxy container.</div>`;
-        }
-        return true;
-      }
-      return false;
-    }
-  </script>
-</body>
-</html>
+  }
+});
+</script>

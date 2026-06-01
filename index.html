@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Command Network v4.3 Secure</title>
+<title>Command Network v4.3.1 Secure</title>
 
 <style>
 body {
@@ -120,7 +120,7 @@ button {
 <body>
 
 <header>
-  <div>🛰 Command Network v4.3 Secure</div>
+  <div>🛰 Command Network v4.3.1 Secure</div>
 
   <div id="loginBox">
     <input id="email" placeholder="email" />
@@ -186,8 +186,10 @@ const app = initializeApp({
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-/* ROLE CONFIG */
-const ADMIN_EMAILS = ["admin@command.net"];
+/* ✅ ADMIN SYSTEM (YOUR UID HERE) */
+const ADMIN_UIDS = [
+  "j4KFCYgFz0UR6n2NF2ZdLkwUfkm1"
+];
 
 /* STATE */
 let channel = "alpha";
@@ -197,16 +199,15 @@ let role = "guest";
 /* UI */
 const feed = document.getElementById("feed");
 const input = document.getElementById("msgInput");
-const radar = document.getElementById("radar");
 const roleTag = document.getElementById("roleTag");
 
 /* CLEAN */
 const clean = s => String(s).replaceAll("<","&lt;").replaceAll(">","&gt;");
 
-/* DB refs */
+/* DB */
 const messagesRef = ch => ref(db,"channels/"+ch);
 
-/* AUTH */
+/* AUTH BUTTONS */
 document.getElementById("loginBtn").onclick = async () => {
   await signInWithEmailAndPassword(
     auth,
@@ -219,7 +220,7 @@ document.getElementById("anonBtn").onclick = () => signInAnonymously(auth);
 document.getElementById("logoutBtn").onclick = () => signOut(auth);
 
 /* AUTH STATE */
-onAuthStateChanged(auth, async u => {
+onAuthStateChanged(auth, u => {
   user = u;
 
   if(!u){
@@ -228,10 +229,11 @@ onAuthStateChanged(auth, async u => {
     return;
   }
 
+  /* ✅ FIXED ROLE SYSTEM (UID BASED) */
   if(u.isAnonymous){
-    role="guest";
+    role = "guest";
   } else {
-    role = ADMIN_EMAILS.includes(u.email) ? "admin" : "operator";
+    role = ADMIN_UIDS.includes(u.uid) ? "admin" : "operator";
   }
 
   roleTag.textContent = `[${role}] ${u.email || "guest"}`;
@@ -269,7 +271,7 @@ onValue(ref(db,"presence"),snap=>{
   const d=snap.val()||{};
   const online=Object.values(d).filter(u=>u.status==="online");
 
-  radar.innerHTML=
+  document.getElementById("radar").innerHTML =
     "🟢 ONLINE OPS ("+online.length+")<br><br>"+
     online.map(u=>`• ${clean(u.user)} [${u.role}] (${u.channel})`).join("<br>");
 });
@@ -302,7 +304,7 @@ function listen(){
       `<b>${clean(d.user)}</b> [${d.role}]<br>${clean(d.text)}`;
 
     feed.appendChild(div);
-    feed.scrollTop=feed.scrollHeight;
+    feed.scrollTop = feed.scrollHeight;
   });
 }
 

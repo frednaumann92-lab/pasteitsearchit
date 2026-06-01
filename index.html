@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Operator Command Deck</title>
+  
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
   <style>
     :root {
       --bg-main: #0d0e12;
@@ -16,7 +20,6 @@
       --accent-red: #ff3333;
     }
     
-    /* Alternate Matrix Green Theme */
     .theme-matrix {
       --bg-main: #020202;
       --bg-panel: #050805;
@@ -27,7 +30,6 @@
       --accent-purple: #00ff66;
     }
 
-    /* Alternate High-Contrast Cyberpunk Theme */
     .theme-cyber {
       --bg-main: #0e0014;
       --bg-panel: #1a0026;
@@ -153,14 +155,14 @@
     <div id="feed">
       <div class="msg">
         <div class="msg-meta"><span class="user">[SYSTEM]</span><span class="time">CORE_READY</span></div>
-        <div class="text-payload sys-alert">>> Secure terminal active. Multi-terminal networking operational.</div>
-        <div class="text-payload sys-alert">>> Available Directives: /ai [query] | /theme [matrix/cyber/default] | /clear | /wipe</div>
+        <div class="text-payload sys-alert">>> Secure network array recovered. Connecting to synchronized relay server...</div>
+        <div class="text-payload sys-alert">>> Operational: /ai [prompt] | /theme [matrix/cyber/default] | /clear | /wipe</div>
       </div>
     </div>
 
     <div id="online-panel">
       <div class="panel-header">ACTIVE_OPERATORS</div>
-      <ul class="operator-list">
+      <ul id="users-grid" class="operator-list">
         <li class="operator-item"><span class="status-dot"></span><span>OP_ACTIVE (You)</span></li>
         <li class="operator-item"><span class="status-dot" style="background-color: var(--accent-purple)"></span><span style="color: var(--accent-purple)">SHIP_AI</span></li>
       </ul>
@@ -169,7 +171,7 @@
 
   <div id="console-bar">
     <span id="prompt-indicator">></span>
-    <input type="text" id="cmd-input" placeholder="Enter routing vector or directive..." autofocus autocomplete="off">
+    <input type="text" id="cmd-input" placeholder="Enter network message or directive..." autofocus autocomplete="off">
   </div>
 
   <script>
@@ -180,44 +182,82 @@
       return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
+    // ====== PASTE YOUR ORIGINAL FIREBASE CONFIG CODES HERE ======
+    const firebaseConfig = {
+      apiKey: "YOUR_OLD_API_KEY",
+      authDomain: "YOUR_OLD_PROJECT.firebaseapp.com",
+      databaseURL: "https://YOUR_OLD_PROJECT.firebaseio.com",
+      projectId: "noble-nation-455601-v2",
+      storageBucket: "YOUR_OLD_PROJECT.appspot.com",
+      messagingSenderId: "YOUR_ID",
+      appId: "YOUR_APP_ID"
+    };
+    // ============================================================
+
+    // Initialize Firebase connectivity if config is supplied
+    let database;
+    if (firebaseConfig.apiKey !== "YOUR_OLD_API_KEY") {
+      firebase.initializeApp(firebaseConfig);
+      database = firebase.database();
+      
+      // RESTORED: Listen for other people typing from their computers
+      database.ref("messages").on("child_added", (snapshot) => {
+        const data = snapshot.val();
+        renderIncomingMessage(data.username, data.text, data.timestamp);
+      });
+    }
+
+    function renderIncomingMessage(user, text, timeStr) {
+      const msgDiv = document.createElement("div");
+      msgDiv.className = "msg";
+      msgDiv.innerHTML = `
+        <div class="msg-meta">
+          <span class="user">${clean(user)}</span>
+          <span class="time">${timeStr}</span>
+        </div>
+        <div class="text-payload">${clean(text)}</div>
+      `;
+      feed.appendChild(msgDiv);
+      feed.scrollTop = feed.scrollHeight;
+    }
+
     input.addEventListener("keydown", async (e) => {
       if (e.key === "Enter") {
         const rawText = input.value;
         if (!rawText.trim()) return;
 
-        // Print local input securely
-        const userDiv = document.createElement("div");
-        userDiv.className = "msg";
-        userDiv.innerHTML = `
-          <div class="msg-meta">
-            <span class="user">OP_ACTIVE</span>
-            <span class="time">${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})}</span>
-          </div>
-          <div class="text-payload">${clean(rawText)}</div>
-        `;
-        feed.appendChild(userDiv);
         input.value = "";
-        feed.scrollTop = feed.scrollHeight;
+        const timestamp = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
 
-        await handleCommand(rawText);
+        // Check if it's a command first. If not, sync it globally to everyone via Firebase
+        const isCommand = await handleCommand(rawText, timestamp);
+        
+        if (!isCommand && database) {
+          database.ref("messages").push({
+            username: "OP_ACTIVE",
+            text: rawText,
+            timestamp: timestamp
+          });
+        } else if (!isCommand && !database) {
+          // Fallback UI rendering if firebase isn't initialized yet
+          renderIncomingMessage("OP_ACTIVE", rawText, timestamp);
+        }
       }
     });
 
     /* ================= SYSTEM CORE COMMAND INTELLIGENCE ================= */
-    async function handleCommand(text) {
+    async function handleCommand(text, timestamp) {
       const cleanText = text.trim();
       const cmd = cleanText.toLowerCase();
 
-      // Local UI Clear Command
       if (cmd === "/clear") {
         feed.innerHTML = "";
         return true;
       }
 
-      // Re-added Theme Matrix Engine
       if (cmd.startsWith("/theme ")) {
         const selectedTheme = cmd.substring(7).trim();
-        document.body.className = ""; // Reset
+        document.body.className = "";
         if (selectedTheme === "matrix") document.body.classList.add("theme-matrix");
         if (selectedTheme === "cyber") document.body.classList.add("theme-cyber");
         
@@ -229,14 +269,13 @@
         return true;
       }
 
-      // Re-added Global Content Wipe Command
       if (cmd === "/wipe") {
-        feed.innerHTML = `<div class="msg"><div class="text-payload" style="color: var(--accent-red)">>> CRITICAL: Global logs wiped by operator authority.</div></div>`;
-        // Note: Put your Firebase database wipe call here if you sync deletions across users!
+        if (database) database.ref("messages").remove();
+        feed.innerHTML = `<div class="msg"><div class="text-payload" style="color: var(--accent-red)">>> CRITICAL: Global logs wiped from database relay.</div></div>`;
         return true;
       }
 
-      // Secure Render AI proxy system
+      // Secure Render AI proxy block
       if (cmd.startsWith("/ai ")) {
         const aiPrompt = cleanText.substring(4).trim();
         if (!aiPrompt) return true;
@@ -259,22 +298,22 @@
 
           if (data.error) throw new Error(data.error);
 
-          const aiDiv = document.createElement("div");
-          aiDiv.className = "msg";
-          aiDiv.style.borderLeft = "3px solid var(--accent-purple)";
-          aiDiv.innerHTML = `
-            <div class="msg-meta">
-              <span class="user" style="color: var(--accent-purple)">🤖 SHIP_AI</span>
-              <span class="time">${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})}</span>
-            </div>
-            <div class="text-payload">${clean(data.text)}</div>
-          `;
-          feed.appendChild(aiDiv);
+          // Render output visually for all operators on the channel
+          const aiPayload = {
+            username: "🤖 SHIP_AI",
+            text: data.text,
+            timestamp: timestamp
+          };
+
+          if (database) {
+            database.ref("messages").push(aiPayload);
+          } else {
+            renderIncomingMessage(aiPayload.username, aiPayload.text, aiPayload.timestamp);
+          }
           
         } catch (err) {
           thinkingEl.innerHTML = `<div class="text-payload" style="color: var(--accent-red)">>> SUBSYSTEM_FAULT: Core connection refused by Render host container.</div>`;
         }
-        feed.scrollTop = feed.scrollHeight;
         return true;
       }
       return false;

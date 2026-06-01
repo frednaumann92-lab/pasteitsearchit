@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Command Network Stable Core FIX</title>
+<title>Command Network Debug Core</title>
 
 <style>
 body {
@@ -83,7 +83,12 @@ button {
 
 #status {
   margin-left: auto;
-  opacity: 0.8;
+}
+
+#debug {
+  padding: 8px;
+  font-size: 12px;
+  color: #ffcc66;
 }
 </style>
 </head>
@@ -91,9 +96,11 @@ button {
 <body>
 
 <header>
-  <div>🛰 Command Network Stable FIX</div>
-  <div id="status">connecting...</div>
+  <div>🛰 Debug Command Network</div>
+  <div id="status">loading...</div>
 </header>
+
+<div id="debug">debug: waiting...</div>
 
 <div id="layout">
 
@@ -108,7 +115,7 @@ button {
 </div>
 
 <div id="inputBar">
-  <input id="msg" placeholder="message or /wipe" />
+  <input id="msg" placeholder="type message or /wipe" />
   <button id="send">SEND</button>
 </div>
 
@@ -119,7 +126,6 @@ import {
   ref,
   push,
   onValue,
-  off,
   remove
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 
@@ -129,6 +135,7 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 
+/* Firebase */
 const app = initializeApp({
   apiKey: "AIzaSyBDQGlsajY4iMxlJvZUfEvm9CnBKnHcD78",
   authDomain: "shared-notes-f6307.firebaseapp.com",
@@ -139,18 +146,20 @@ const app = initializeApp({
 const db = getDatabase(app);
 const auth = getAuth(app);
 
+/* ONLY CONTROL */
 const ALLOWED_UIDS = [
   "uiXgz4sgYfo5TjSl1uLc9Xmypk7Xv1"
 ];
 
 let user = null;
 let channel = "alpha";
-let currentRef = null;
 
-/* UI */
 const feed = document.getElementById("feed");
 const msg = document.getElementById("msg");
 const status = document.getElementById("status");
+const debug = document.getElementById("debug");
+
+const refPath = () => ref(db, "channels/" + channel);
 
 /* AUTH */
 onAuthStateChanged(auth, u => {
@@ -161,35 +170,25 @@ onAuthStateChanged(auth, u => {
     return;
   }
 
-  status.textContent = `online: ${u.uid.slice(0,6)}`;
-  bindChannel();
+  status.textContent = u.uid.slice(0, 8);
+
+  listen();
 });
 
 signInAnonymously(auth);
 
-/* CORE LISTENER CONTROL (THIS FIXES EVERYTHING) */
-function bindChannel() {
-  const newRef = ref(db, "channels/" + channel);
-
-  if (currentRef) {
-    off(currentRef);   // IMPORTANT: prevents stacking listeners
-  }
-
-  currentRef = newRef;
-
-  onValue(currentRef, snap => {
+/* LISTEN */
+function listen() {
+  onValue(refPath(), snap => {
     const data = snap.val() || {};
-
     feed.innerHTML = "";
 
-    Object.values(data).forEach(d => {
+    Object.values(data).forEach(m => {
       const div = document.createElement("div");
       div.className = "msg";
-      div.innerHTML = `<b>${d.user}</b><br>${d.text}`;
+      div.innerHTML = `<b>${m.user}</b><br>${m.text}`;
       feed.appendChild(div);
     });
-
-    feed.scrollTop = feed.scrollHeight;
   });
 }
 
@@ -197,7 +196,7 @@ function bindChannel() {
 document.querySelectorAll(".channel").forEach(el => {
   el.onclick = () => {
     channel = el.dataset.ch;
-    bindChannel();
+    listen();
   };
 });
 
@@ -208,21 +207,31 @@ async function send() {
   const text = msg.value.trim();
   if (!text) return;
 
-  const refPath = ref(db, "channels/" + channel);
+  const r = refPath();
 
   if (text === "/wipe") {
+
+    debug.textContent = "wipe requested...";
+
     if (!ALLOWED_UIDS.includes(user.uid)) {
-      alert("Not allowed");
+      debug.textContent = "wipe blocked: UID not allowed";
       msg.value = "";
       return;
     }
 
-    await remove(refPath);
+    try {
+      await remove(r);
+      debug.textContent = "wipe SUCCESS";
+    } catch (e) {
+      debug.textContent = "wipe FAILED: " + e.message;
+      console.error(e);
+    }
+
     msg.value = "";
     return;
   }
 
-  await push(refPath, {
+  await push(r, {
     user: user.uid.slice(0, 6),
     text,
     t: Date.now()

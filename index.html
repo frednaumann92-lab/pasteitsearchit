@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Command Network v4.2</title>
+<title>Command Network v4.3 Secure</title>
 
 <style>
 body {
@@ -13,7 +13,6 @@ body {
   color: #d7dde8;
 }
 
-/* HEADER */
 header {
   background: #0f1622;
   padding: 10px;
@@ -24,14 +23,12 @@ header {
   border-bottom: 1px solid #1f2a3a;
 }
 
-/* LAYOUT */
 #layout {
   display: grid;
   grid-template-columns: 220px 1fr 260px;
   height: 85vh;
 }
 
-/* MOBILE */
 @media (max-width: 800px) {
   #layout {
     grid-template-columns: 1fr;
@@ -46,12 +43,9 @@ header {
     border-bottom: 1px solid #1f2a3a;
   }
 
-  #radar {
-    max-height: 160px;
-  }
+  #radar { max-height: 160px; }
 }
 
-/* CHANNELS */
 #channels {
   background: #0a0f18;
   border-right: 1px solid #1f2a3a;
@@ -65,7 +59,6 @@ header {
   background: rgba(255,255,255,0.03);
 }
 
-/* FEED */
 #feed {
   overflow-y: auto;
   padding: 10px;
@@ -79,7 +72,6 @@ header {
   background: rgba(255,255,255,0.03);
 }
 
-/* RADAR */
 #radar {
   background: #0a0f18;
   border-left: 1px solid #1f2a3a;
@@ -89,7 +81,6 @@ header {
   overflow-y: auto;
 }
 
-/* INPUT BAR FIXED WIDTH */
 #inputBar {
   display: flex;
   gap: 6px;
@@ -100,7 +91,7 @@ header {
   bottom: 0;
 }
 
-input, button, select {
+input, button {
   font-family: monospace;
   border: none;
   border-radius: 6px;
@@ -112,15 +103,16 @@ input {
   color: #fff;
 }
 
-#msgInput {
-  flex: 1;
-  min-width: 250px;
-}
-
 button {
   background: #d32f2f;
   color: white;
   cursor: pointer;
+}
+
+#loginBox {
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
 }
 </style>
 </head>
@@ -128,18 +120,16 @@ button {
 <body>
 
 <header>
-  <div>🛰 Command Network v4.2</div>
+  <div>🛰 Command Network v4.3 Secure</div>
 
-  <div style="display:flex; gap:6px; flex-wrap:wrap;">
-    <input id="usernameBox" placeholder="operator" style="width:120px;" />
+  <div id="loginBox">
+    <input id="email" placeholder="email" />
+    <input id="pass" type="password" placeholder="password" />
+    <button id="loginBtn">Login</button>
+    <button id="anonBtn">Guest</button>
+    <button id="logoutBtn">Logout</button>
 
-    <select id="roleBox">
-      <option value="operator">operator</option>
-      <option value="admin">admin</option>
-      <option value="guest">guest</option>
-    </select>
-
-    <button id="muteBtn">🔊</button>
+    <span id="roleTag">[offline]</span>
   </div>
 </header>
 
@@ -174,6 +164,14 @@ import {
   off
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  signInAnonymously,
+  signOut,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+
 /* FIREBASE */
 const app = initializeApp({
   apiKey: "AIzaSyBDQGlsajY4iMxlJvZUfEvm9CnBKnHcD78",
@@ -186,53 +184,71 @@ const app = initializeApp({
 });
 
 const db = getDatabase(app);
+const auth = getAuth(app);
+
+/* ROLE CONFIG */
+const ADMIN_EMAILS = ["admin@command.net"];
 
 /* STATE */
 let channel = "alpha";
-let sound = true;
+let user = null;
+let role = "guest";
 
 /* UI */
 const feed = document.getElementById("feed");
 const input = document.getElementById("msgInput");
-const userBox = document.getElementById("usernameBox");
-const roleBox = document.getElementById("roleBox");
 const radar = document.getElementById("radar");
-
-/* AUDIO */
-const ctx = new (window.AudioContext || window.webkitAudioContext)();
-function tone(f,d,t="sine",v=0.05){
-  if(!sound) return;
-  const o=ctx.createOscillator();
-  const g=ctx.createGain();
-  o.frequency.value=f;
-  o.type=t;
-  g.gain.value=v;
-  o.connect(g);
-  g.connect(ctx.destination);
-  o.start();
-  setTimeout(()=>o.stop(),d);
-}
-const sSend=()=>tone(520,60,"square");
-const sRecv=()=>tone(880,80);
-const sCmd=()=>tone(660,90,"triangle");
-const sAlert=()=>tone(120,300,"sawtooth",0.08);
+const roleTag = document.getElementById("roleTag");
 
 /* CLEAN */
 const clean = s => String(s).replaceAll("<","&lt;").replaceAll(">","&gt;");
 
-/* CHANNEL */
+/* DB refs */
 const messagesRef = ch => ref(db,"channels/"+ch);
+
+/* AUTH */
+document.getElementById("loginBtn").onclick = async () => {
+  await signInWithEmailAndPassword(
+    auth,
+    document.getElementById("email").value,
+    document.getElementById("pass").value
+  );
+};
+
+document.getElementById("anonBtn").onclick = () => signInAnonymously(auth);
+document.getElementById("logoutBtn").onclick = () => signOut(auth);
+
+/* AUTH STATE */
+onAuthStateChanged(auth, async u => {
+  user = u;
+
+  if(!u){
+    role="offline";
+    roleTag.textContent="[offline]";
+    return;
+  }
+
+  if(u.isAnonymous){
+    role="guest";
+  } else {
+    role = ADMIN_EMAILS.includes(u.email) ? "admin" : "operator";
+  }
+
+  roleTag.textContent = `[${role}] ${u.email || "guest"}`;
+
+  setupPresence();
+  listen();
+});
 
 /* PRESENCE */
 const myId = crypto.randomUUID?.() || String(Date.now());
 const presenceRef = ref(db,"presence/"+myId);
 
-function updatePresence(){
-  const name = userBox.value.trim() || "anon";
-  const role = roleBox.value;
+function setupPresence(){
+  if(!user) return;
 
   set(presenceRef,{
-    user:name,
+    user: user.email || "guest",
     role,
     channel,
     status:"online",
@@ -240,17 +256,13 @@ function updatePresence(){
   });
 
   onDisconnect(presenceRef).set({
-    user:name,
+    user: user.email || "guest",
     role,
     channel,
     status:"offline",
     t:Date.now()
   });
 }
-
-userBox.addEventListener("input", updatePresence);
-roleBox.addEventListener("change", updatePresence);
-updatePresence();
 
 /* RADAR */
 onValue(ref(db,"presence"),snap=>{
@@ -266,42 +278,33 @@ onValue(ref(db,"presence"),snap=>{
 document.querySelectorAll(".channel").forEach(el=>{
   el.onclick=()=>{
     channel=el.dataset.ch;
-
-    // FIX: properly detach previous listener
-    if (window.currentListenerRef) {
-      off(window.currentListenerRef);
-    }
-
     feed.innerHTML="";
     listen();
-    updatePresence();
+    setupPresence();
   };
 });
 
 /* MESSAGES */
-let lastKey=null;
-window.currentListenerRef = null;
+let listener=null;
 
 function listen(){
-  window.currentListenerRef = messagesRef(channel);
+  if(listener) off(listener);
 
-  onChildAdded(window.currentListenerRef, snap=>{
+  listener = messagesRef(channel);
+
+  onChildAdded(listener, snap=>{
     const d=snap.val();
 
     const div=document.createElement("div");
     div.className="msg";
 
     div.innerHTML=
-      `<b>${clean(d.user)}</b> [${d.channel}]<br>${clean(d.text)}`;
+      `<b>${clean(d.user)}</b> [${d.role}]<br>${clean(d.text)}`;
 
     feed.appendChild(div);
     feed.scrollTop=feed.scrollHeight;
-
-    lastKey=snap.key;
-    sRecv();
   });
 }
-listen();
 
 /* COMMANDS */
 function cmd(t){
@@ -312,23 +315,10 @@ function cmd(t){
     return true;
   }
 
-  if(c==="/wipe"&&roleBox.value==="admin"){
-    sAlert();
+  if(c==="/wipe"){
+    if(role!=="admin") return true;
     remove(ref(db,"channels/"+channel));
     feed.innerHTML="";
-    return true;
-  }
-
-  if(c.startsWith("/channel ")){
-    channel=c.split(" ")[1];
-
-    if (window.currentListenerRef) {
-      off(window.currentListenerRef);
-    }
-
-    feed.innerHTML="";
-    listen();
-    updatePresence();
     return true;
   }
 
@@ -336,32 +326,23 @@ function cmd(t){
 }
 
 /* SEND */
-function send(){
+document.getElementById("sendBtn").onclick = () => {
   const text=input.value.trim();
-  if(!text)return;
+  if(!text || !user) return;
 
-  if(cmd(text)){sCmd();input.value="";return;}
+  if(cmd(text)){ input.value=""; return; }
 
   push(messagesRef(channel),{
-    user:userBox.value||"anon",
-    role:roleBox.value,
+    user: user.email || "guest",
+    role,
     channel,
     text,
     t:Date.now()
   });
 
-  sSend();
   input.value="";
-}
-
-document.getElementById("sendBtn").onclick=send;
-input.addEventListener("keydown",e=>e.key==="Enter"&&send());
-
-/* MUTE */
-document.getElementById("muteBtn").onclick=()=>{
-  sound=!sound;
-  document.getElementById("muteBtn").textContent=sound?"🔊":"🔇";
 };
+
 </script>
 
 </body>

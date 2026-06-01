@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Command Network v4.1</title>
+<title>Command Network v4.2</title>
 
 <style>
 body {
@@ -24,14 +24,14 @@ header {
   border-bottom: 1px solid #1f2a3a;
 }
 
-/* MAIN LAYOUT */
+/* LAYOUT */
 #layout {
   display: grid;
   grid-template-columns: 220px 1fr 260px;
   height: 85vh;
 }
 
-/* MOBILE FIX */
+/* MOBILE */
 @media (max-width: 800px) {
   #layout {
     grid-template-columns: 1fr;
@@ -63,7 +63,6 @@ header {
   margin-bottom: 6px;
   cursor: pointer;
   background: rgba(255,255,255,0.03);
-  white-space: nowrap;
 }
 
 /* FEED */
@@ -90,13 +89,15 @@ header {
   overflow-y: auto;
 }
 
-/* INPUT */
+/* INPUT BAR FIXED WIDTH */
 #inputBar {
   display: flex;
   gap: 6px;
   padding: 10px;
   background: #0f1622;
   border-top: 1px solid #1f2a3a;
+  position: sticky;
+  bottom: 0;
 }
 
 input, button, select {
@@ -111,6 +112,11 @@ input {
   color: #fff;
 }
 
+#msgInput {
+  flex: 1;
+  min-width: 250px;
+}
+
 button {
   background: #d32f2f;
   color: white;
@@ -122,11 +128,11 @@ button {
 <body>
 
 <header>
-  <div>🛰 Command Network v4.1</div>
+  <div>🛰 Command Network v4.2</div>
 
   <div style="display:flex; gap:6px; flex-wrap:wrap;">
     <input id="usernameBox" placeholder="operator" style="width:120px;" />
-    
+
     <select id="roleBox">
       <option value="operator">operator</option>
       <option value="admin">admin</option>
@@ -164,7 +170,8 @@ import {
   remove,
   set,
   onDisconnect,
-  onValue
+  onValue,
+  off
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 
 /* FIREBASE */
@@ -210,46 +217,42 @@ const sRecv=()=>tone(880,80);
 const sCmd=()=>tone(660,90,"triangle");
 const sAlert=()=>tone(120,300,"sawtooth",0.08);
 
-/* CHANNEL REF */
-const messagesRef = ch => ref(db,"channels/"+ch);
-
 /* CLEAN */
 const clean = s => String(s).replaceAll("<","&lt;").replaceAll(">","&gt;");
 
-/* CURRENT USER ID */
+/* CHANNEL */
+const messagesRef = ch => ref(db,"channels/"+ch);
+
+/* PRESENCE */
 const myId = crypto.randomUUID?.() || String(Date.now());
 const presenceRef = ref(db,"presence/"+myId);
 
-/* ---------------- PRESENCE FIX ---------------- */
-function updatePresence() {
+function updatePresence(){
   const name = userBox.value.trim() || "anon";
   const role = roleBox.value;
 
-  set(presenceRef, {
-    user: name,
+  set(presenceRef,{
+    user:name,
     role,
     channel,
-    status: "online",
-    t: Date.now()
+    status:"online",
+    t:Date.now()
   });
 
   onDisconnect(presenceRef).set({
-    user: name,
+    user:name,
     role,
     channel,
-    status: "offline",
-    t: Date.now()
+    status:"offline",
+    t:Date.now()
   });
 }
 
-/* FIX: update on BOTH inputs (this was broken before) */
 userBox.addEventListener("input", updatePresence);
 roleBox.addEventListener("change", updatePresence);
-
-/* init */
 updatePresence();
 
-/* ---------------- RADAR ---------------- */
+/* RADAR */
 onValue(ref(db,"presence"),snap=>{
   const d=snap.val()||{};
   const online=Object.values(d).filter(u=>u.status==="online");
@@ -259,25 +262,35 @@ onValue(ref(db,"presence"),snap=>{
     online.map(u=>`• ${clean(u.user)} [${u.role}] (${u.channel})`).join("<br>");
 });
 
-/* ---------------- CHANNEL SWITCH ---------------- */
+/* CHANNEL SWITCH */
 document.querySelectorAll(".channel").forEach(el=>{
   el.onclick=()=>{
     channel=el.dataset.ch;
+
+    // FIX: properly detach previous listener
+    if (window.currentListenerRef) {
+      off(window.currentListenerRef);
+    }
+
     feed.innerHTML="";
     listen();
     updatePresence();
   };
 });
 
-/* ---------------- MESSAGES ---------------- */
+/* MESSAGES */
 let lastKey=null;
+window.currentListenerRef = null;
 
 function listen(){
-  onChildAdded(messagesRef(channel),snap=>{
+  window.currentListenerRef = messagesRef(channel);
+
+  onChildAdded(window.currentListenerRef, snap=>{
     const d=snap.val();
 
     const div=document.createElement("div");
     div.className="msg";
+
     div.innerHTML=
       `<b>${clean(d.user)}</b> [${d.channel}]<br>${clean(d.text)}`;
 
@@ -290,11 +303,14 @@ function listen(){
 }
 listen();
 
-/* ---------------- COMMANDS ---------------- */
+/* COMMANDS */
 function cmd(t){
   const c=t.toLowerCase();
 
-  if(c==="/clear"){feed.innerHTML="";return true;}
+  if(c==="/clear"){
+    feed.innerHTML="";
+    return true;
+  }
 
   if(c==="/wipe"&&roleBox.value==="admin"){
     sAlert();
@@ -305,6 +321,11 @@ function cmd(t){
 
   if(c.startsWith("/channel ")){
     channel=c.split(" ")[1];
+
+    if (window.currentListenerRef) {
+      off(window.currentListenerRef);
+    }
+
     feed.innerHTML="";
     listen();
     updatePresence();
@@ -314,7 +335,7 @@ function cmd(t){
   return false;
 }
 
-/* ---------------- SEND ---------------- */
+/* SEND */
 function send(){
   const text=input.value.trim();
   if(!text)return;

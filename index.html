@@ -1,3 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Command Network v4.3.2 Auto-Guest</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: monospace;
+  background: #070a0f;
+  color: #d7dde8;
+}
+
+header {
+  background: #0f1622;
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-bottom: 1px solid #1f2a3a;
+}
+
+#layout {
+  display: grid;
+  grid-template-columns: 220px 1fr 260px;
+  height: 85vh;
+}
+
+@media (max-width: 800px) {
+  #layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+  }
+
+  #channels {
+    display: flex;
+    overflow-x: auto;
+    gap: 6px;
+    border-right: none;
+    border-bottom: 1px solid #1f2a3a;
+  }
+
+  #radar { max-height: 160px; }
+}
+
+#channels {
+  background: #0a0f18;
+  border-right: 1px solid #1f2a3a;
+  padding: 10px;
+}
+
+.channel {
+  padding: 8px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  background: rgba(255,255,255,0.03);
+}
+
+#feed {
+  overflow-y: auto;
+  padding: 10px;
+  background: #0c111c;
+}
+
+.msg {
+  padding: 6px;
+  margin-bottom: 6px;
+  border-left: 3px solid #2b6cff;
+  background: rgba(255,255,255,0.03);
+}
+
+#radar {
+  background: #0a0f18;
+  border-left: 1px solid #1f2a3a;
+  padding: 10px;
+  font-size: 12px;
+  color: #4dd0e1;
+  overflow-y: auto;
+}
+
+#inputBar {
+  display: flex;
+  gap: 6px;
+  padding: 10px;
+  background: #0f1622;
+  border-top: 1px solid #1f2a3a;
+  position: sticky;
+  bottom: 0;
+}
+
+input, button {
+  font-family: monospace;
+  border: none;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+input {
+  background: #141c2b;
+  color: #fff;
+}
+
+button {
+  background: #d32f2f;
+  color: white;
+  cursor: pointer;
+}
+
+#loginBox {
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+}
+
+#roleTag {
+  padding: 6px 10px;
+  background: #111a2a;
+  border-radius: 6px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div>🛰 Command Network v4.3.2 Auto-Guest</div>
+
+  <div id="loginBox">
+    <input id="email" placeholder="email" />
+    <input id="pass" type="password" placeholder="password" />
+    <button id="loginBtn">Login</button>
+    <button id="logoutBtn">Logout</button>
+
+    <span id="roleTag">🔄 connecting...</span>
+  </div>
+</header>
+
+<div id="layout">
+  <div id="channels">
+    <div class="channel" data-ch="alpha"># alpha</div>
+    <div class="channel" data-ch="bravo"># bravo</div>
+    <div class="channel" data-ch="charlie"># charlie</div>
+    <div class="channel" data-ch="broadcast"># broadcast</div>
+  </div>
+
+  <div id="feed"></div>
+  <div id="radar">🟢 INIT...</div>
+</div>
+
+<div id="inputBar">
+  <input id="msgInput" placeholder="message or /command..." />
+  <button id="sendBtn">SEND</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import {
+  getDatabase,
+  ref,
+  push,
+  onChildAdded,
+  remove,
+  set,
+  onDisconnect,
+  onValue,
+  off
+} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+
 import {
   getAuth,
   signInWithEmailAndPassword,
@@ -6,20 +177,47 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 
+/* FIREBASE */
+const app = initializeApp({
+  apiKey: "AIzaSyBDQGlsajY4iMxlJvZUfEvm9CnBKnHcD78",
+  authDomain: "shared-notes-f6307.firebaseapp.com",
+  databaseURL: "https://shared-notes-f6307-default-rtdb.firebaseio.com",
+  projectId: "shared-notes-f6307",
+  storageBucket: "shared-notes-f6307.firebasestorage.app",
+  messagingSenderId: "51317483112",
+  appId: "1:51317483112:web:7767ef1f15f473ce98bddd"
+});
+
+const db = getDatabase(app);
 const auth = getAuth(app);
 
-/* UI */
-const roleTag = document.getElementById("roleTag");
-
-/* ADMIN IDS */
+/* ADMIN UID LIST */
 const ADMIN_UIDS = [
   "j4KFCYgFz0UR6n2NF2ZdLkwUfkm1"
 ];
 
-/* AUTO GUEST LOGIN (IMPORTANT FIX) */
-signInAnonymously(auth); // 👈 this makes guest automatic on load
+/* STATE */
+let channel = "alpha";
+let user = null;
+let role = "guest";
 
-/* LOGIN BUTTONS (still optional upgrade path) */
+/* UI */
+const feed = document.getElementById("feed");
+const input = document.getElementById("msgInput");
+const roleTag = document.getElementById("roleTag");
+
+/* CLEAN */
+const clean = s => String(s).replaceAll("<","&lt;").replaceAll(">","&gt;");
+
+/* DB */
+const messagesRef = ch => ref(db,"channels/"+ch);
+
+/* =========================
+   AUTO GUEST LOGIN (FIX)
+========================= */
+signInAnonymously(auth); // 👈 everyone becomes guest instantly
+
+/* LOGIN BUTTONS */
 document.getElementById("loginBtn").onclick = async () => {
   await signInWithEmailAndPassword(
     auth,
@@ -32,24 +230,129 @@ document.getElementById("logoutBtn").onclick = () => signOut(auth);
 
 /* AUTH STATE */
 onAuthStateChanged(auth, u => {
+  user = u;
+
   if(!u){
     roleTag.textContent = "[connecting...]";
     return;
   }
 
-  let role;
-
-  if (u.isAnonymous) {
+  if(u.isAnonymous){
     role = "guest";
   } else {
     role = ADMIN_UIDS.includes(u.uid) ? "admin" : "operator";
   }
 
-  roleTag.textContent = `[${role}] ${u.email || "guest"}`;
-
-  window.currentUser = u;
-  window.currentRole = role;
+  roleTag.textContent = `🟢 [${role}] ${u.email || "guest"}`;
 
   setupPresence();
   listen();
 });
+
+/* PRESENCE */
+const myId = crypto.randomUUID?.() || String(Date.now());
+const presenceRef = ref(db,"presence/"+myId);
+
+function setupPresence(){
+  if(!user) return;
+
+  set(presenceRef,{
+    user: user.email || "guest",
+    role,
+    channel,
+    status:"online",
+    t:Date.now()
+  });
+
+  onDisconnect(presenceRef).set({
+    user: user.email || "guest",
+    role,
+    channel,
+    status:"offline",
+    t:Date.now()
+  });
+}
+
+/* RADAR */
+onValue(ref(db,"presence"),snap=>{
+  const d=snap.val()||{};
+  const online=Object.values(d).filter(u=>u.status==="online");
+
+  document.getElementById("radar").innerHTML =
+    "🟢 ONLINE OPS ("+online.length+")<br><br>"+
+    online.map(u=>`• ${clean(u.user)} [${u.role}] (${u.channel})`).join("<br>");
+});
+
+/* CHANNEL SWITCH */
+document.querySelectorAll(".channel").forEach(el=>{
+  el.onclick=()=>{
+    channel=el.dataset.ch;
+    feed.innerHTML="";
+    listen();
+    setupPresence();
+  };
+});
+
+/* MESSAGES */
+let listener=null;
+
+function listen(){
+  if(listener) off(listener);
+
+  listener = messagesRef(channel);
+
+  onChildAdded(listener, snap=>{
+    const d=snap.val();
+
+    const div=document.createElement("div");
+    div.className="msg";
+
+    div.innerHTML=
+      `<b>${clean(d.user)}</b> [${d.role}]<br>${clean(d.text)}`;
+
+    feed.appendChild(div);
+    feed.scrollTop = feed.scrollHeight;
+  });
+}
+
+/* COMMANDS */
+function cmd(t){
+  const c=t.toLowerCase();
+
+  if(c==="/clear"){
+    feed.innerHTML="";
+    return true;
+  }
+
+  if(c==="/wipe"){
+    if(role!=="admin") return true;
+    remove(ref(db,"channels/"+channel));
+    feed.innerHTML="";
+    return true;
+  }
+
+  return false;
+}
+
+/* SEND */
+document.getElementById("sendBtn").onclick = () => {
+  const text=input.value.trim();
+  if(!text || !user) return;
+
+  if(cmd(text)){ input.value=""; return; }
+
+  push(messagesRef(channel),{
+    user: user.email || "guest",
+    role,
+    channel,
+    text,
+    t:Date.now()
+  });
+
+  input.value="";
+};
+
+</script>
+
+</body>
+</html>

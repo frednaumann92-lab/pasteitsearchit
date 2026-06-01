@@ -3,22 +3,22 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Command Network v6 Stable Core</title>
+<title>Command Network v7 Core</title>
 
 <style>
 body {
   margin: 0;
   font-family: monospace;
-  background: #070a0f;
+  background: #06090f;
   color: #d7dde8;
 }
 
 header {
-  background: #0f1622;
-  padding: 10px;
   display: flex;
   gap: 10px;
   align-items: center;
+  padding: 10px;
+  background: #0f1622;
   border-bottom: 1px solid #1f2a3a;
 }
 
@@ -41,6 +41,10 @@ header {
   background: rgba(255,255,255,0.03);
 }
 
+.channel:hover {
+  background: rgba(255,255,255,0.07);
+}
+
 #feed {
   padding: 10px;
   overflow-y: auto;
@@ -56,8 +60,8 @@ header {
 
 #inputBar {
   display: flex;
-  padding: 10px;
   gap: 6px;
+  padding: 10px;
   background: #0f1622;
   border-top: 1px solid #1f2a3a;
 }
@@ -70,9 +74,9 @@ input, button {
 }
 
 input {
+  flex: 1;
   background: #141c2b;
   color: white;
-  flex: 1;
 }
 
 button {
@@ -83,9 +87,7 @@ button {
 
 #status {
   margin-left: auto;
-  padding: 4px 8px;
-  background: #111a2a;
-  border-radius: 6px;
+  opacity: 0.8;
 }
 </style>
 </head>
@@ -93,7 +95,7 @@ button {
 <body>
 
 <header>
-  <div>🛰 Command Network v6 Core</div>
+  <div>🛰 Command Network v7</div>
   <div id="status">connecting...</div>
 </header>
 
@@ -120,7 +122,7 @@ import {
   getDatabase,
   ref,
   push,
-  onChildAdded,
+  onValue,
   remove
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 
@@ -130,7 +132,7 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 
-/* FIREBASE */
+/* FIREBASE CONFIG */
 const app = initializeApp({
   apiKey: "AIzaSyBDQGlsajY4iMxlJvZUfEvm9CnBKnHcD78",
   authDomain: "shared-notes-f6307.firebaseapp.com",
@@ -141,21 +143,20 @@ const app = initializeApp({
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-/* ONLY CONTROL MECHANISM (no roles, no confusion) */
-const ALLOWED_COMMAND_UIDS = [
+/* ONLY CONTROL MECHANISM */
+const ALLOWED_UIDS = [
   "uiXgz4sgYfo5TjSl1uLc9Xmypk7Xv1"
 ];
 
 let user = null;
 let channel = "alpha";
-let unsubscribe = null;
 
 /* UI */
 const feed = document.getElementById("feed");
 const msg = document.getElementById("msg");
 const status = document.getElementById("status");
 
-const messagesRef = ch => ref(db, "channels/" + ch);
+const channelRef = () => ref(db, "channels/" + channel);
 
 /* AUTH */
 onAuthStateChanged(auth, u => {
@@ -167,25 +168,26 @@ onAuthStateChanged(auth, u => {
   }
 
   status.textContent = `online: ${u.uid.slice(0,6)}`;
-  listen();
+  render();
 });
 
-/* AUTO LOGIN (no UI dead states) */
+/* AUTO LOGIN */
 signInAnonymously(auth);
 
-/* LISTENER (clean + safe) */
-function listen() {
-  if (unsubscribe) unsubscribe();
-  feed.innerHTML = "";
+/* REAL-TIME RENDER (NO DESYNC EVER) */
+function render() {
+  onValue(channelRef(), snap => {
+    const data = snap.val() || {};
 
-  unsubscribe = onChildAdded(messagesRef(channel), snap => {
-    const d = snap.val();
+    feed.innerHTML = "";
 
-    const div = document.createElement("div");
-    div.className = "msg";
-    div.innerHTML = `<b>${d.user}</b><br>${d.text}`;
+    Object.values(data).forEach(d => {
+      const div = document.createElement("div");
+      div.className = "msg";
+      div.innerHTML = `<b>${d.user}</b><br>${d.text}`;
+      feed.appendChild(div);
+    });
 
-    feed.appendChild(div);
     feed.scrollTop = feed.scrollHeight;
   });
 }
@@ -194,7 +196,7 @@ function listen() {
 document.querySelectorAll(".channel").forEach(el => {
   el.onclick = () => {
     channel = el.dataset.ch;
-    listen();
+    render();
   };
 });
 
@@ -205,26 +207,20 @@ async function send() {
   const text = msg.value.trim();
   if (!text) return;
 
-  /* COMMAND SYSTEM */
+  /* COMMAND */
   if (text === "/wipe") {
-    if (!ALLOWED_COMMAND_UIDS.includes(user.uid)) {
+    if (!ALLOWED_UIDS.includes(user.uid)) {
       alert("Not allowed");
       msg.value = "";
       return;
     }
 
-    try {
-      await remove(messagesRef(channel));
-      feed.innerHTML = "";
-    } catch (e) {
-      console.error("wipe failed:", e);
-    }
-
+    await remove(channelRef());
     msg.value = "";
     return;
   }
 
-  await push(messagesRef(channel), {
+  await push(channelRef(), {
     user: user.uid.slice(0, 6),
     text,
     t: Date.now()

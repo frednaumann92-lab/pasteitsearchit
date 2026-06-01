@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Command Center v4.2 // Multi-Theme Matrix</title>
+<title>Command Center v4.5 // AI Matrix Core</title>
 
 <style>
   /* Default Cyberpunk Theme Variables */
@@ -128,6 +128,7 @@
   .text-payload {
     word-break: break-word;
     line-height: 1.4;
+    white-space: pre-wrap; /* Maintains simple system diagnostic formatting */
   }
 
   .sys-alert {
@@ -254,7 +255,7 @@
 <body>
 
 <header>
-  <div class="logo" id="headerLogo">🛰 TERMINUS_COMMAND_CENTER // v4.2</div>
+  <div class="logo" id="headerLogo">🛰 TERMINUS_COMMAND_CENTER // v4.5</div>
   <div style="display: flex; align-items: center; gap: 10px;">
     <input id="usernameBox" placeholder="SYS_OPERATOR_ID" />
     <button id="muteBtn" title="Toggle System Audio">🔊</button>
@@ -271,7 +272,7 @@
 </div>
 
 <div id="inputBar">
-  <input id="msgInput" placeholder="Type message or /theme [cyberpunk|matrix|retro|void]..." autocomplete="off" />
+  <input id="msgInput" placeholder="Type message, /theme [name], or /ai [query]..." autocomplete="off" />
   <button id="sendBtn">EXECUTE</button>
 </div>
 
@@ -289,7 +290,14 @@ import {
   get
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 
-/* ================= FIREBASE ================= */
+// Import the modern Firebase AI Logic SDK modules
+import { 
+  getFirebaseAI, 
+  generativeModel, 
+  generateContent 
+} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-ai-logic.js";
+
+/* ================= FIREBASE INITIALIZATION ================= */
 const firebaseConfig = {
   apiKey: "AIzaSyBDQGlsajY4iMxlJvZUfEvm9CnBKnHcD78",
   authDomain: "shared-notes-f6307.firebaseapp.com",
@@ -305,6 +313,11 @@ const db = getDatabase(app);
 
 const messagesRef = ref(db, "messages");
 const presenceRef = ref(db, "presence");
+
+/* ================= SYSTEM AI INITIALIZATION ================= */
+// Instantiate standard AI Logic parameters mapping to Gemini
+const ai = getFirebaseAI(app, { backend: "googleAI" });
+const aiModel = generativeModel(ai, { modelName: "gemini-3.5-flash" });
 
 /* ================= UI ELEMENTS ================= */
 const feed = document.getElementById("feed");
@@ -323,7 +336,7 @@ const themes = {
     "--glow-color": "#00ffcc",
     "--text-primary": "#cbd5e1",
     "--text-muted": "#4e6580",
-    "logo-text": "🛰 TERMINUS_COMMAND_CENTER // v4.2"
+    "logo-text": "🛰 TERMINUS_COMMAND_CENTER // v4.5"
   },
   matrix: {
     "--bg-dark": "#020502",
@@ -369,10 +382,8 @@ function applyTheme(themeName) {
   return true;
 }
 
-// Automatically load existing configured user theme frame or default to cyberpunk
 const activeTheme = localStorage.getItem("cmd_theme") || "cyberpunk";
 applyTheme(activeTheme);
-
 
 /* ================= OPERATOR CONFIG ================= */
 usernameBox.value = localStorage.getItem("cmd_user") || "OPERATOR_" + Math.floor(1000 + Math.random() * 9000);
@@ -534,7 +545,50 @@ async function handleCommand(text) {
   const cleanText = text.trim();
   const cmd = cleanText.toLowerCase();
 
-  // Theme command detection
+  // Intercepting prompt triggers routing directly to the Firebase AI Logic SDK 
+  if (cmd.startsWith("/ai ")) {
+    const aiPrompt = cleanText.substring(4).trim();
+    if (!aiPrompt) return true;
+
+    // 1. Generate local placeholder readout
+    const thinkingEl = document.createElement("div");
+    thinkingEl.className = "msg";
+    thinkingEl.innerHTML = `<div class="text-payload sys-alert">>> SHIP_AI: Processing algorithmic telemetry...</div>`;
+    feed.appendChild(thinkingEl);
+    feed.scrollTop = feed.scrollHeight;
+
+    try {
+      // 2. Transmit prompt through Firebase SDK securely
+      const response = await generateContent(aiModel, aiPrompt);
+      thinkingEl.remove();
+
+      // 3. Render final AI matrix response node
+      const aiDiv = document.createElement("div");
+      aiDiv.className = "msg";
+      aiDiv.style.borderLeft = "3px solid #bc6ff1";
+      
+      const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+      aiDiv.innerHTML = `
+        <div class="msg-meta">
+          <span class="user" style="color: #bc6ff1">🤖 SHIP_AI</span>
+          <span class="time">${timestamp}</span>
+        </div>
+        <div class="text-payload">${clean(response.text)}</div>
+      `;
+      feed.appendChild(aiDiv);
+    } catch (err) {
+      thinkingEl.remove();
+      const errDiv = document.createElement("div");
+      errDiv.className = "msg";
+      errDiv.innerHTML = `<div class="text-payload" style="color: var(--accent-red)">>> AI_ERROR: Handshake rejected. Ensure billing plans and required APIs are initialized.</div>`;
+      feed.appendChild(errDiv);
+    }
+
+    feed.scrollTop = feed.scrollHeight;
+    return true;
+  }
+
+  // Visual dynamic layout switches
   if (cmd.startsWith("/theme ")) {
     const targetTheme = cleanText.split(" ")[1];
     const success = applyTheme(targetTheme);

@@ -155,8 +155,8 @@
     <div id="feed">
       <div class="msg">
         <div class="msg-meta"><span class="user">[SYSTEM]</span><span class="time">CORE_READY</span></div>
-        <div class="text-payload sys-alert">>> Secure terminal synchronizer online. Relay matrix running...</div>
-        <div class="text-payload sys-alert">>> Active Options: /ai [query] | /theme [matrix/cyber/default] | /clear | /wipe</div>
+        <div class="text-payload sys-alert">>> Unified communication grid linked. Network matrix online.</div>
+        <div class="text-payload sys-alert">>> Active Directives: /ai [query] | /theme [matrix/cyber/default] | /clear | /wipe</div>
       </div>
     </div>
 
@@ -169,7 +169,7 @@
 
   <div id="console-bar">
     <span id="prompt-indicator">></span>
-    <input type="text" id="cmd-input" placeholder="Type data packet or enter command directive..." autofocus autocomplete="off">
+    <input type="text" id="cmd-input" placeholder="Enter routing vector or command parameters..." autofocus autocomplete="off">
   </div>
 
   <script>
@@ -181,7 +181,7 @@
       return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
-    // Prompts for username exactly like your original layout did
+    // Handles user identification strings natively
     let myUsername = localStorage.getItem("chat_username");
     if (!myUsername) {
       myUsername = prompt("Enter your operator handle:") || "ANONYMOUS_OP";
@@ -189,26 +189,27 @@
     }
 
     // ============================================================
-    // CRITICAL FIX: CHOOSE YOUR EXACT API KEY HERE
+    // FIXED INTEGRATION GATEWAY CONFIGURATION
     const firebaseConfig = {
-      apiKey: "YOUR_REAL_ACTUAL_FIREBASE_API_KEY", 
+      apiKey: "AIzaSyAs-EXAMPLE_REPLACE_WITH_YOUR_KEY_IF_NEEDED", 
       authDomain: "noble-nation-455601-v2.firebaseapp.com",
       databaseURL: "https://noble-nation-455601-v2-default-rtdb.firebaseio.com/",
       projectId: "noble-nation-455601-v2",
-      storageBucket: "noble-nation-455601-v2.appspot.com"
+      storageBucket: "noble-nation-455601-v2.appspot.com",
+      appId: "1:51317483112:web:7767ef1f15f473ce98bddd"
     };
     // ============================================================
 
-    // Initialize Network Link
+    // Initialize Network Handshaking
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
     
-    // Track Online Status Presence
+    // Track Local Node Presence Coordinates
     const myPresenceRef = database.ref("presence/" + myUsername);
     myPresenceRef.set({ username: myUsername, status: "online" });
     myPresenceRef.onDisconnect().remove();
 
-    // Listen to changes in online operators
+    // Listen to changes in online operators globally
     database.ref("presence").on("value", (snapshot) => {
       usersGrid.innerHTML = "";
       snapshot.forEach((child) => {
@@ -218,14 +219,14 @@
         li.innerHTML = `<span class="status-dot"></span><span>${clean(userVal)} ${userVal === myUsername ? "(You)" : ""}</span>`;
         usersGrid.appendChild(li);
       });
-      // Always add the local AI indicator node
+      // Append persistent AI terminal presence node
       const aiLi = document.createElement("li");
       aiLi.className = "operator-item";
       aiLi.innerHTML = `<span class="status-dot" style="background-color: var(--accent-purple)"></span><span style="color: var(--accent-purple)">SHIP_AI</span>`;
       usersGrid.appendChild(aiLi);
     });
 
-    // Multiplayer Chat Synchronizer (Restored parsing logic)
+    // Unified Global Text Stream Synced Callback
     database.ref("messages").on("child_added", (snapshot) => {
       const data = snapshot.val();
       renderIncomingMessage(data.username || "ANONYMOUS_OP", data.text, data.timestamp);
@@ -299,7 +300,7 @@
 
       if (cmd === "/wipe") {
         database.ref("messages").remove();
-        feed.innerHTML = `<div class="msg"><div class="text-payload" style="color: var(--accent-red)">>> CRITICAL: Global logs wiped from server.</div></div>`;
+        feed.innerHTML = `<div class="msg"><div class="text-payload" style="color: var(--accent-red)">>> CRITICAL: Global logs wiped from server endpoint.</div></div>`;
         return true;
       }
 

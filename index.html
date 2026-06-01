@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Command Center v4.0 // Terminus</title>
+<title>Command Center v4.2 // Multi-Theme Matrix</title>
 
 <style>
+  /* Default Cyberpunk Theme Variables */
   :root {
     --bg-dark: #05070a;
     --panel-bg: #0b111a;
@@ -30,6 +31,7 @@
     flex-direction: column;
     overflow: hidden;
     position: relative;
+    transition: background 0.3s ease, color 0.3s ease;
   }
 
   /* Scanline CRT Simulation Effect */
@@ -52,13 +54,15 @@
     align-items: center;
     border-bottom: 2px solid var(--border-color);
     box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    transition: background 0.3s ease, border-color 0.3s ease;
   }
 
   .logo {
     font-weight: bold;
     color: var(--glow-color);
-    text-shadow: 0 0 8px rgba(0, 255, 204, 0.5);
+    text-shadow: 0 0 8px var(--glow-color);
     letter-spacing: 1px;
+    transition: color 0.3s ease, text-shadow 0.3s ease;
   }
 
   .main-container {
@@ -97,6 +101,7 @@
     background: rgba(15, 22, 34, 0.4);
     border: 1px solid var(--border-color);
     animation: fadeIn 0.2s ease-out;
+    transition: background 0.3s ease, border-color 0.3s ease;
   }
 
   @keyframes fadeIn {
@@ -125,6 +130,13 @@
     line-height: 1.4;
   }
 
+  .sys-alert {
+    color: var(--glow-color);
+    font-style: italic;
+    border-left: 3px solid var(--glow-color);
+    padding-left: 8px;
+  }
+
   /* Sidebar Radar Panel */
   #radar-panel {
     width: 260px;
@@ -133,6 +145,7 @@
     display: flex;
     flex-direction: column;
     padding: 15px;
+    transition: background 0.3s ease, border-color 0.3s ease;
   }
 
   .panel-title {
@@ -165,6 +178,7 @@
     border-radius: 50%;
     background: var(--glow-color);
     box-shadow: 0 0 6px var(--glow-color);
+    transition: background 0.3s ease, box-shadow 0.3s ease;
   }
 
   /* Footer Controls & Inputs */
@@ -175,6 +189,7 @@
     background: var(--panel-bg);
     border-top: 2px solid var(--border-color);
     align-items: center;
+    transition: background 0.3s ease, border-color 0.3s ease;
   }
 
   input, button {
@@ -239,7 +254,7 @@
 <body>
 
 <header>
-  <div class="logo">🛰 TERMINUS_COMMAND_CENTER // v4.0</div>
+  <div class="logo" id="headerLogo">🛰 TERMINUS_COMMAND_CENTER // v4.2</div>
   <div style="display: flex; align-items: center; gap: 10px;">
     <input id="usernameBox" placeholder="SYS_OPERATOR_ID" />
     <button id="muteBtn" title="Toggle System Audio">🔊</button>
@@ -256,7 +271,7 @@
 </div>
 
 <div id="inputBar">
-  <input id="msgInput" placeholder="Pass telemetry data or clear grid with /clear..." autocomplete="off" />
+  <input id="msgInput" placeholder="Type message or /theme [cyberpunk|matrix|retro|void]..." autocomplete="off" />
   <button id="sendBtn">EXECUTE</button>
 </div>
 
@@ -297,11 +312,71 @@ const input = document.getElementById("msgInput");
 const usernameBox = document.getElementById("usernameBox");
 const muteBtn = document.getElementById("muteBtn");
 const radarList = document.getElementById("radar-list");
+const headerLogo = document.getElementById("headerLogo");
+
+/* ================= THEME ENGINE ARCHITECTURE ================= */
+const themes = {
+  cyberpunk: {
+    "--bg-dark": "#05070a",
+    "--panel-bg": "#0b111a",
+    "--border-color": #1a2636",
+    "--glow-color": "#00ffcc",
+    "--text-primary": "#cbd5e1",
+    "--text-muted": "#4e6580",
+    "logo-text": "🛰 TERMINUS_COMMAND_CENTER // v4.2"
+  },
+  matrix: {
+    "--bg-dark": "#020502",
+    "--panel-bg": "#050f06",
+    "--border-color": "#0f3011",
+    "--glow-color": "#00ff33",
+    "--text-primary": "#a3ffa8",
+    "--text-muted": "#38823e",
+    "logo-text": "📟 NEB_MATRIX_CORE // RELOADED"
+  },
+  retro: {
+    "--bg-dark": "#120a00",
+    "--panel-bg": "#241400",
+    "--border-color": "#4d2b00",
+    "--glow-color": "#ffb300",
+    "--text-primary": "#ffe4a3",
+    "--text-muted": "#8a5c16",
+    "logo-text": "📜 AMBER_TERMINAL_VINTAGE // 1984"
+  },
+  void: {
+    "--bg-dark": "#0a050c",
+    "--panel-bg": "#140b19",
+    "--border-color": "#331340",
+    "--glow-color": "#d946ef",
+    "--text-primary": "#fae8ff",
+    "--text-muted": "#704680",
+    "logo-text": "🔮 VOID_NEXUS_SUBSYSTEM // UNKNOWN"
+  }
+};
+
+function applyTheme(themeName) {
+  const targetTheme = themes[themeName];
+  if (!targetTheme) return false;
+
+  Object.entries(targetTheme).forEach(([variable, value]) => {
+    if (variable !== "logo-text") {
+      document.documentElement.style.setProperty(variable, value);
+    }
+  });
+
+  headerLogo.textContent = targetTheme["logo-text"];
+  localStorage.setItem("cmd_theme", themeName);
+  return true;
+}
+
+// Automatically load existing configured user theme frame or default to cyberpunk
+const activeTheme = localStorage.getItem("cmd_theme") || "cyberpunk";
+applyTheme(activeTheme);
+
 
 /* ================= OPERATOR CONFIG ================= */
 usernameBox.value = localStorage.getItem("cmd_user") || "OPERATOR_" + Math.floor(1000 + Math.random() * 9000);
 
-// Deterministic colors for handles to make distinct identities stand out visually
 function getUsernameColor(username) {
   let hash = 0;
   for (let i = 0; i < username.length; i++) {
@@ -390,19 +465,16 @@ onChildAdded(messagesRef, (snap) => {
   const key = snap.key;
   const data = snap.val();
   
-  // Prevent duplicate visual rendering loops
   if (itemsMap.has(key)) return;
 
   const msgEl = createMessageElement(data, key);
   feed.appendChild(msgEl);
   itemsMap.set(key, msgEl);
   
-  // Clean container scrolling auto-lock 
   feed.scrollTop = feed.scrollHeight;
   soundReceive();
 });
 
-// Sync real-time updates for commands executing /wipe or deletions from other terminals
 onValue(messagesRef, (snap) => {
   if (!snap.exists()) {
     feed.innerHTML = "";
@@ -410,7 +482,6 @@ onValue(messagesRef, (snap) => {
     return;
   }
   
-  // Remove items locally that are no longer present in DB architecture
   const currentKeys = Object.keys(snap.val());
   for (let localKey of itemsMap.keys()) {
     if (!currentKeys.includes(localKey)) {
@@ -436,9 +507,7 @@ function setOnline() {
   onDisconnect(myPresenceRef).remove();
 }
 
-// Initial presence execution setup
 setOnline();
-// Heartbeat routine to drop stale nodes gracefully
 setInterval(setOnline, 30000);
 
 onValue(presenceRef, (snap) => {
@@ -462,7 +531,23 @@ onValue(presenceRef, (snap) => {
 
 /* ================= SUBSYSTEM COMMAND PROCESSING ================= */
 async function handleCommand(text) {
-  const cmd = text.trim().toLowerCase();
+  const cleanText = text.trim();
+  const cmd = cleanText.toLowerCase();
+
+  // Theme command detection
+  if (cmd.startsWith("/theme ")) {
+    const targetTheme = cleanText.split(" ")[1];
+    const success = applyTheme(targetTheme);
+    
+    if (success) {
+      const alertDiv = document.createElement("div");
+      alertDiv.className = "msg";
+      alertDiv.innerHTML = `<div class="text-payload sys-alert">>> Visual UI configuration adjusted to "${targetTheme.toUpperCase()}".</div>`;
+      feed.appendChild(alertDiv);
+      feed.scrollTop = feed.scrollHeight;
+    }
+    return true;
+  }
 
   if (cmd === "/clear") {
     feed.innerHTML = "";
@@ -471,7 +556,6 @@ async function handleCommand(text) {
   }
 
   if (cmd === "/del last") {
-    // Queries remote node architecture safely instead of tracking unstable mutable keys
     const snap = await get(messagesRef);
     if (snap.exists()) {
       const keys = Object.keys(snap.val());

@@ -155,15 +155,15 @@
     <div id="feed">
       <div class="msg">
         <div class="msg-meta"><span class="user">[SYSTEM]</span><span class="time">CORE_READY</span></div>
-        <div class="text-payload sys-alert">>> Secure network array recovered. Connecting to synchronized relay server...</div>
-        <div class="text-payload sys-alert">>> Operational: /ai [prompt] | /theme [matrix/cyber/default] | /clear | /wipe</div>
+        <div class="text-payload sys-alert">>> System core operational. Multi-terminal networking online.</div>
+        <div class="text-payload sys-alert">>> Directives: /ai [prompt] | /theme [matrix/cyber/default] | /clear | /wipe</div>
       </div>
     </div>
 
     <div id="online-panel">
       <div class="panel-header">ACTIVE_OPERATORS</div>
       <ul id="users-grid" class="operator-list">
-        <li class="operator-item"><span class="status-dot"></span><span>OP_ACTIVE (You)</span></li>
+        <li class="operator-item"><span class="status-dot"></span><span id="local-user-display">OP_ACTIVE (You)</span></li>
         <li class="operator-item"><span class="status-dot" style="background-color: var(--accent-purple)"></span><span style="color: var(--accent-purple)">SHIP_AI</span></li>
       </ul>
     </div>
@@ -171,48 +171,65 @@
 
   <div id="console-bar">
     <span id="prompt-indicator">></span>
-    <input type="text" id="cmd-input" placeholder="Enter network message or directive..." autofocus autocomplete="off">
+    <input type="text" id="cmd-input" placeholder="Enter network package or directive..." autofocus autocomplete="off">
   </div>
 
   <script>
     const feed = document.getElementById("feed");
     const input = document.getElementById("cmd-input");
+    const usersGrid = document.getElementById("users-grid");
 
     function clean(str) {
       return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
-    // ====== PASTE YOUR ORIGINAL FIREBASE CONFIG CODES HERE ======
-    const firebaseConfig = {
-      apiKey: "YOUR_OLD_API_KEY",
-      authDomain: "YOUR_OLD_PROJECT.firebaseapp.com",
-      databaseURL: "https://YOUR_OLD_PROJECT.firebaseio.com",
-      projectId: "noble-nation-455601-v2",
-      storageBucket: "YOUR_OLD_PROJECT.appspot.com",
-      messagingSenderId: "YOUR_ID",
-      appId: "YOUR_APP_ID"
-    };
-    // ============================================================
+    // Attempt to automatically extract your previous credentials if saved in windows memory
+    let firebaseConfig = window.firebaseConfig || null;
+    let database = null;
 
-    // Initialize Firebase connectivity if config is supplied
-    let database;
-    if (firebaseConfig.apiKey !== "YOUR_OLD_API_KEY") {
-      firebase.initializeApp(firebaseConfig);
-      database = firebase.database();
-      
-      // RESTORED: Listen for other people typing from their computers
-      database.ref("messages").on("child_added", (snapshot) => {
-        const data = snapshot.val();
-        renderIncomingMessage(data.username, data.text, data.timestamp);
-      });
+    if (firebaseConfig) {
+      try {
+        firebase.initializeApp(firebaseConfig);
+        database = firebase.database();
+        
+        // Dynamic Multiplayer Listener
+        database.ref("messages").on("child_added", (snapshot) => {
+          const data = snapshot.val();
+          renderIncomingMessage(data.username || "UNKNOWN_OP", data.text, data.timestamp);
+        });
+
+        // Dynamic Presence Listener for other computers
+        database.ref("present_users").on("value", (snapshot) => {
+          // Keep base users, add external operators dynamically
+          usersGrid.innerHTML = `
+            <li class="operator-item"><span class="status-dot"></span><span>OP_ACTIVE (You)</span></li>
+            <li class="operator-item"><span class="status-dot" style="background-color: var(--accent-purple)"></span><span style="color: var(--accent-purple)">SHIP_AI</span></li>
+          `;
+          snapshot.forEach((child) => {
+            if(child.val().username !== "OP_ACTIVE") {
+              const li = document.createElement("li");
+              li.className = "operator-item";
+              li.innerHTML = `<span class="status-dot"></span><span>${clean(child.val().username)}</span>`;
+              usersGrid.appendChild(li);
+            }
+          });
+        });
+      } catch (e) {
+        console.log("Network gateway linking paused.");
+      }
     }
 
     function renderIncomingMessage(user, text, timeStr) {
       const msgDiv = document.createElement("div");
       msgDiv.className = "msg";
+      
+      // Determine user styling
+      let nameStyle = "";
+      if (user === "🤖 SHIP_AI") nameStyle = "style='color: var(--accent-purple)'";
+      
       msgDiv.innerHTML = `
         <div class="msg-meta">
-          <span class="user">${clean(user)}</span>
+          <span class="user" ${nameStyle}>${clean(user)}</span>
           <span class="time">${timeStr}</span>
         </div>
         <div class="text-payload">${clean(text)}</div>
@@ -229,18 +246,19 @@
         input.value = "";
         const timestamp = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
 
-        // Check if it's a command first. If not, sync it globally to everyone via Firebase
         const isCommand = await handleCommand(rawText, timestamp);
         
-        if (!isCommand && database) {
-          database.ref("messages").push({
-            username: "OP_ACTIVE",
-            text: rawText,
-            timestamp: timestamp
-          });
-        } else if (!isCommand && !database) {
-          // Fallback UI rendering if firebase isn't initialized yet
-          renderIncomingMessage("OP_ACTIVE", rawText, timestamp);
+        if (!isCommand) {
+          if (database) {
+            database.ref("messages").push({
+              username: "OP_ACTIVE",
+              text: rawText,
+              timestamp: timestamp
+            });
+          } else {
+            // Instant local render so you never lose usernames or layout visibility
+            renderIncomingMessage("OP_ACTIVE", rawText, timestamp);
+          }
         }
       }
     });
@@ -250,11 +268,13 @@
       const cleanText = text.trim();
       const cmd = cleanText.toLowerCase();
 
+      // Restored: /clear command
       if (cmd === "/clear") {
         feed.innerHTML = "";
         return true;
       }
 
+      // Restored: /theme command
       if (cmd.startsWith("/theme ")) {
         const selectedTheme = cmd.substring(7).trim();
         document.body.className = "";
@@ -269,13 +289,14 @@
         return true;
       }
 
+      // Restored: /wipe command
       if (cmd === "/wipe") {
         if (database) database.ref("messages").remove();
-        feed.innerHTML = `<div class="msg"><div class="text-payload" style="color: var(--accent-red)">>> CRITICAL: Global logs wiped from database relay.</div></div>`;
+        feed.innerHTML = `<div class="msg"><div class="text-payload" style="color: var(--accent-red)">>> CRITICAL: Global logs wiped from unified relay database.</div></div>`;
         return true;
       }
 
-      // Secure Render AI proxy block
+      // Secure Render AI Proxy Channel
       if (cmd.startsWith("/ai ")) {
         const aiPrompt = cleanText.substring(4).trim();
         if (!aiPrompt) return true;
@@ -298,7 +319,6 @@
 
           if (data.error) throw new Error(data.error);
 
-          // Render output visually for all operators on the channel
           const aiPayload = {
             username: "🤖 SHIP_AI",
             text: data.text,
@@ -312,7 +332,7 @@
           }
           
         } catch (err) {
-          thinkingEl.innerHTML = `<div class="text-payload" style="color: var(--accent-red)">>> SUBSYSTEM_FAULT: Core connection refused by Render host container.</div>`;
+          thinkingEl.innerHTML = `<div class="text-payload" style="color: var(--accent-red)">>> SUBSYSTEM_FAULT: Connection refused by Render proxy container.</div>`;
         }
         return true;
       }

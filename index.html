@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Command Network v5 Stable Reset</title>
+<title>Command Network v5 Stable (Fixed)</title>
 
 <style>
 body {
@@ -73,7 +73,6 @@ input, button {
 input {
   background: #141c2b;
   color: white;
-  flex: 1;
 }
 
 button {
@@ -88,6 +87,11 @@ button {
   background: #111a2a;
   border-radius: 6px;
 }
+
+#adminBox {
+  display: flex;
+  gap: 6px;
+}
 </style>
 </head>
 
@@ -96,14 +100,15 @@ button {
 <header>
   <div>🛰 Command Network v5 Stable</div>
 
-  <input id="email" placeholder="email" />
-  <input id="pass" type="password" placeholder="password" />
+  <div id="adminBox">
+    <input id="email" placeholder="admin email" />
+    <input id="pass" type="password" placeholder="password" />
+    <button id="adminLogin">Admin Login</button>
+  </div>
 
-  <button id="loginBtn">Login</button>
-  <button id="guestBtn">Guest</button>
   <button id="logoutBtn">Logout</button>
 
-  <div id="status">offline</div>
+  <div id="status">starting...</div>
 </header>
 
 <div id="layout">
@@ -119,7 +124,7 @@ button {
 </div>
 
 <div id="inputBar">
-  <input id="msg" placeholder="message or /wipe /clear..." />
+  <input id="msg" placeholder="message or /wipe" />
   <button id="send">SEND</button>
 </div>
 
@@ -152,7 +157,7 @@ const app = initializeApp({
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-/* ADMIN */
+/* ADMIN UID */
 const ADMIN_UIDS = [
   "uiXgz4sgYfo5TjSl1uLc9Xmypk7Xv1"
 ];
@@ -160,6 +165,7 @@ const ADMIN_UIDS = [
 let channel = "alpha";
 let user = null;
 let role = "guest";
+let unsubscribe = null;
 
 /* UI */
 const feed = document.getElementById("feed");
@@ -168,50 +174,12 @@ const status = document.getElementById("status");
 
 const messagesRef = ch => ref(db, "channels/" + ch);
 
-/* AUTH */
-onAuthStateChanged(auth, u => {
-  user = u;
-
-  if (!u) {
-    status.textContent = "offline";
-    return;
-  }
-
-  role = u.isAnonymous
-    ? "guest"
-    : (ADMIN_UIDS.includes(u.uid) ? "admin" : "operator");
-
-  status.textContent = role;
-
-  listen();
-});
-
-/* LOGIN */
-document.getElementById("loginBtn").onclick = async () => {
-  await signInWithEmailAndPassword(
-    auth,
-    email.value,
-    pass.value
-  );
-};
-
-/* GUEST */
-document.getElementById("guestBtn").onclick = () => {
-  signInAnonymously(auth);
-};
-
-/* LOGOUT (FIXED) */
-document.getElementById("logoutBtn").onclick = async () => {
-  await signOut(auth);
-  feed.innerHTML = "";
-  status.textContent = "logged out";
-};
-
-/* LISTEN */
+/* CLEAN LISTENER */
 function listen() {
+  if (unsubscribe) unsubscribe();
   feed.innerHTML = "";
 
-  onChildAdded(messagesRef(channel), snap => {
+  unsubscribe = onChildAdded(messagesRef(channel), snap => {
     const d = snap.val();
 
     const div = document.createElement("div");
@@ -219,10 +187,49 @@ function listen() {
     div.innerHTML = `<b>${d.user}</b><br>${d.text}`;
 
     feed.appendChild(div);
+    feed.scrollTop = feed.scrollHeight;
   });
 }
 
-/* CHANNELS */
+/* AUTH STATE */
+onAuthStateChanged(auth, u => {
+  user = u;
+
+  if (!u) {
+    status.textContent = "offline";
+    role = "none";
+    return;
+  }
+
+  role =
+    ADMIN_UIDS.includes(u.uid) ? "admin" :
+    u.isAnonymous ? "guest" : "operator";
+
+  status.textContent = role;
+
+  listen();
+});
+
+/* AUTO GUEST LOGIN */
+signInAnonymously(auth);
+
+/* ADMIN LOGIN */
+document.getElementById("adminLogin").onclick = async () => {
+  const email = document.getElementById("email").value;
+  const pass = document.getElementById("pass").value;
+
+  if (!email || !pass) return alert("Enter admin credentials");
+
+  await signInWithEmailAndPassword(auth, email, pass);
+};
+
+/* LOGOUT */
+document.getElementById("logoutBtn").onclick = async () => {
+  await signOut(auth);
+  feed.innerHTML = "";
+};
+
+/* CHANNEL SWITCH */
 document.querySelectorAll(".channel").forEach(el => {
   el.onclick = () => {
     channel = el.dataset.ch;
@@ -237,7 +244,7 @@ function send() {
   const text = msg.value.trim();
   if (!text) return;
 
-  /* ADMIN COMMANDS */
+  /* COMMANDS */
   if (role === "admin" && text === "/wipe") {
     remove(messagesRef(channel));
     feed.innerHTML = "";
@@ -256,14 +263,12 @@ function send() {
 
 document.getElementById("send").onclick = send;
 
-/* ENTER KEY */
 msg.addEventListener("keydown", e => {
   if (e.key === "Enter") {
     e.preventDefault();
     send();
   }
 });
-
 </script>
 
 </body>

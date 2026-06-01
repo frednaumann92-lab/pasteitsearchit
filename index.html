@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Command Network v4.3.4 Enter Fix</title>
+<title>Command Network v4.3.5 Stable</title>
 
 <style>
 body {
@@ -121,7 +121,7 @@ button {
 <body>
 
 <header>
-  <div>🛰 Command Network v4.3.4 Enter Fix</div>
+  <div>🛰 Command Network v4.3.5 Stable</div>
 
   <div>
     <input id="email" placeholder="email" />
@@ -196,6 +196,7 @@ let channel = "alpha";
 let user = null;
 let role = "guest";
 let listener = null;
+let authReady = false;
 
 /* UI */
 const feed = document.getElementById("feed");
@@ -208,25 +209,33 @@ const clean = s => String(s).replaceAll("<","&lt;").replaceAll(">","&gt;");
 /* DB */
 const messagesRef = ch => ref(db,"channels/"+ch);
 
-/* AUTO GUEST LOGIN */
+/* =========================
+   SAFE AUTO GUEST (NO CONFLICT)
+========================= */
 setTimeout(() => {
-  signInAnonymously(auth).catch(console.error);
-}, 200);
+  if (!auth.currentUser) {
+    signInAnonymously(auth).catch(console.error);
+  }
+}, 250);
 
 /* LOGIN */
 document.getElementById("loginBtn").onclick = async () => {
-  await signInWithEmailAndPassword(
-    auth,
-    document.getElementById("email").value,
-    document.getElementById("pass").value
-  );
+  try {
+    await signInWithEmailAndPassword(
+      auth,
+      document.getElementById("email").value,
+      document.getElementById("pass").value
+    );
+  } catch (e) {
+    console.error("Login failed:", e);
+  }
 };
 
 document.getElementById("logoutBtn").onclick = () => signOut(auth);
 
-/* AUTH STATE */
+/* AUTH STATE (STABLE) */
 onAuthStateChanged(auth, u => {
-  if(!u){
+  if (!u) {
     roleTag.textContent = "🔄 connecting...";
     return;
   }
@@ -240,7 +249,11 @@ onAuthStateChanged(auth, u => {
   roleTag.textContent = `🟢 [${role}] ${u.email || "guest"}`;
 
   setupPresence();
-  listen();
+
+  if (!authReady) {
+    authReady = true;
+    listen();
+  }
 });
 
 /* PRESENCE */
@@ -327,7 +340,7 @@ function cmd(t){
 }
 
 /* SEND */
-function sendMessage(){
+function send(){
   const text = input.value.trim();
   if(!text || !user) return;
 
@@ -347,14 +360,13 @@ function sendMessage(){
   input.value="";
 }
 
-/* BUTTON SEND */
-document.getElementById("sendBtn").onclick = sendMessage;
+document.getElementById("sendBtn").onclick = send;
 
-/* ✅ ENTER KEY FIX */
-input.addEventListener("keydown", (e) => {
+/* ENTER KEY FIX */
+input.addEventListener("keydown", e => {
   if (e.key === "Enter") {
     e.preventDefault();
-    sendMessage();
+    send();
   }
 });
 

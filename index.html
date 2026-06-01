@@ -4,8 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Operator Command Deck</title>
-
-  <!-- ✅ FIREBASE MUST LOAD FIRST -->
+  
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
@@ -20,28 +19,45 @@
       --accent-purple: #bc6ff1;
       --accent-red: #ff3333;
     }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+    
+    .theme-matrix {
+      --bg-main: #020202;
+      --bg-panel: #050805;
+      --border-color: #0f2d11;
+      --text-main: #33ff33;
+      --text-muted: #145a19;
+      --accent-green: #33ff33;
+      --accent-purple: #00ff66;
     }
 
+    .theme-cyber {
+      --bg-main: #0e0014;
+      --bg-panel: #1a0026;
+      --border-color: #ff0055;
+      --text-main: #00f0ff;
+      --text-muted: #730046;
+      --accent-green: #00f0ff;
+      --accent-purple: #ff0055;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background-color: var(--bg-main);
       color: var(--text-main);
-      font-family: monospace;
+      font-family: 'Courier New', Courier, monospace;
       height: 100vh;
       display: flex;
       flex-direction: column;
-      padding: 10px;
       overflow: hidden;
+      padding: 10px;
+      transition: background-color 0.2s, color 0.2s;
     }
-
+    
     #workspace {
       display: flex;
       flex: 1;
       gap: 10px;
+      margin-bottom: 10px;
       min-height: 0;
     }
 
@@ -60,212 +76,261 @@
       border: 1px solid var(--border-color);
       border-radius: 4px;
       padding: 10px;
-      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
     }
 
     .panel-header {
       font-weight: bold;
       color: var(--accent-green);
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 5px;
       margin-bottom: 10px;
+      font-size: 0.9em;
+    }
+
+    .operator-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 0.9em;
+    }
+
+    .operator-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      background-color: var(--accent-green);
+      border-radius: 50%;
     }
 
     .msg {
-      margin-bottom: 10px;
-      padding-left: 6px;
+      margin-bottom: 12px;
+      line-height: 1.5;
+      padding-left: 8px;
     }
-
-    .user {
-      color: var(--accent-green);
-      font-weight: bold;
+    .msg-meta {
+      font-size: 0.85em;
+      margin-bottom: 3px;
     }
-
-    .time {
-      color: var(--text-muted);
-      margin-left: 8px;
+    .user { color: var(--accent-green); font-weight: bold; }
+    .time { color: var(--text-muted); margin-left: 8px; }
+    .text-payload { white-space: pre-wrap; word-break: break-word; }
+    .sys-alert { color: var(--accent-purple); }
+    
+    #status-updates {
       font-size: 0.8em;
-    }
-
-    .text {
-      margin-top: 3px;
-      white-space: pre-wrap;
-    }
-
-    .operator {
-      margin-bottom: 6px;
-      color: var(--text-main);
+      color: var(--accent-purple);
+      margin-top: auto;
+      padding-top: 5px;
+      font-style: italic;
+      min-height: 18px;
     }
 
     #console-bar {
       display: flex;
-      gap: 8px;
-      padding: 10px;
       background: var(--bg-panel);
       border: 1px solid var(--border-color);
       border-radius: 4px;
-      margin-top: 10px;
+      padding: 12px;
+      align-items: center;
     }
-
-    #prompt {
+    #prompt-indicator {
       color: var(--accent-green);
+      font-weight: bold;
+      margin-right: 10px;
+      user-select: none;
     }
-
-    input {
+    #cmd-input {
       flex: 1;
       background: transparent;
       border: none;
-      outline: none;
       color: var(--text-main);
-      font-family: monospace;
+      font-family: inherit;
+      font-size: 1em;
+      outline: none;
     }
   </style>
 </head>
-
 <body>
 
-<div id="workspace">
-  <div id="feed"></div>
-
-  <div id="online-panel">
-    <div class="panel-header">ACTIVE OPERATORS</div>
-    <div id="users"></div>
-  </div>
-</div>
-
-<div id="console-bar">
-  <span id="prompt">></span>
-  <input id="input" placeholder="message or /command..." />
-</div>
-
-<script>
-/* ================= FIREBASE INIT ================= */
-const firebaseConfig = {
-  apiKey: "AIzaSyBDQGlsajY4iMxlJvZUfEvm9CnBKnHcD78",
-  authDomain: "shared-notes-f6307.firebaseapp.com",
-  databaseURL: "https://shared-notes-f6307-default-rtdb.firebaseio.com",
-  projectId: "shared-notes-f6307",
-  storageBucket: "shared-notes-f6307.firebasestorage.app",
-  messagingSenderId: "51317483112",
-  appId: "1:51317483112:web:7767ef1f15f473ce98bddd"
-};
-
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-
-/* ================= UI ================= */
-const feed = document.getElementById("feed");
-const input = document.getElementById("input");
-const users = document.getElementById("users");
-
-/* ================= USER IDENTITY ================= */
-const myId = localStorage.getItem("op_id") || crypto.randomUUID();
-localStorage.setItem("op_id", myId);
-
-let username = localStorage.getItem("op_name") || "OPERATOR";
-
-/* ================= USERNAME EDIT (LIVE) ================= */
-const nameBox = document.createElement("input");
-nameBox.value = username;
-nameBox.style.marginLeft = "10px";
-nameBox.style.width = "120px";
-document.getElementById("console-bar").prepend(nameBox);
-
-nameBox.addEventListener("input", () => {
-  username = nameBox.value.trim() || "OPERATOR";
-  localStorage.setItem("op_name", username);
-  updatePresence();
-});
-
-/* ================= PRESENCE ================= */
-const presenceRef = db.ref("presence/" + myId);
-
-function updatePresence() {
-  presenceRef.set({
-    username,
-    status: "online",
-    t: Date.now()
-  });
-
-  presenceRef.onDisconnect().set({
-    username,
-    status: "offline",
-    t: Date.now()
-  });
-}
-
-updatePresence();
-
-/* ================= MESSAGES ================= */
-function render(user, text, time) {
-  const div = document.createElement("div");
-  div.className = "msg";
-
-  div.innerHTML = `
-    <div>
-      <span class="user">${user}</span>
-      <span class="time">${time}</span>
+  <div id="workspace">
+    <div id="feed">
+      <div class="msg">
+        <div class="msg-meta"><span class="user">[SYSTEM]</span><span class="time">CORE_READY</span></div>
+        <div class="text-payload sys-alert">>> Secure terminal synchronizer online. Relay matrix running...</div>
+        <div class="text-payload sys-alert">>> Active Options: /ai [query] | /theme [matrix/cyber/default] | /clear | /wipe</div>
+      </div>
     </div>
-    <div class="text">${text}</div>
-  `;
 
-  feed.appendChild(div);
-  feed.scrollTop = feed.scrollHeight;
-}
+    <div id="online-panel">
+      <div class="panel-header">ACTIVE_OPERATORS</div>
+      <ul id="users-grid" class="operator-list">
+        <li class="operator-item"><span class="status-dot"></span><span>OP_ACTIVE (You)</span></li>
+        <li class="operator-item"><span class="status-dot" style="background-color: var(--accent-purple)"></span><span style="color: var(--accent-purple)">SHIP_AI</span></li>
+      </ul>
+      <div id="status-updates"></div>
+    </div>
+  </div>
 
-/* LIVE MESSAGES */
-db.ref("messages").on("child_added", snap => {
-  const d = snap.val();
-  render(d.username, d.text, d.timestamp);
-});
+  <div id="console-bar">
+    <span id="prompt-indicator">></span>
+    <input type="text" id="cmd-input" placeholder="Type data packet or enter command directive..." autofocus autocomplete="off">
+  </div>
 
-/* ================= PRESENCE LIST ================= */
-db.ref("presence").on("value", snap => {
-  users.innerHTML = "";
+  <script>
+    const feed = document.getElementById("feed");
+    const input = document.getElementById("cmd-input");
+    const statusUpdates = document.getElementById("status-updates");
 
-  snap.forEach(child => {
-    const u = child.val();
-    const div = document.createElement("div");
-    div.className = "operator";
-    div.textContent = "• " + u.username + (u.status === "online" ? " (online)" : "");
-    users.appendChild(div);
-  });
-});
+    function clean(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
 
-/* ================= COMMANDS ================= */
-function handleCommand(cmd) {
-  cmd = cmd.toLowerCase();
+    const myUsername = "OP_ACTIVE";
 
-  if (cmd === "/clear") {
-    feed.innerHTML = "";
-    return true;
-  }
+    // ============================================================
+    // CRITICAL FIX: REPLACE THIS ENTIRE CONFIG WITH YOUR ORIGINAL OLD VALUES
+    const firebaseConfig = {
+      apiKey: "YOUR_REAL_ACTUAL_FIREBASE_API_KEY", 
+      authDomain: "noble-nation-455601-v2.firebaseapp.com",
+      databaseURL: "https://noble-nation-455601-v2-default-rtdb.firebaseio.com/",
+      projectId: "noble-nation-455601-v2",
+      storageBucket: "noble-nation-455601-v2.appspot.com"
+    };
+    // ============================================================
 
-  if (cmd === "/wipe") {
-    db.ref("messages").remove();
-    feed.innerHTML = "";
-    return true;
-  }
+    // Initialize Network Link
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    
+    // Multiplayer Chat Synchronizer
+    database.ref("messages").on("child_added", (snapshot) => {
+      const data = snapshot.val();
+      renderIncomingMessage(data.username || "ANONYMOUS_OP", data.text, data.timestamp);
+    });
 
-  return false;
-}
+    // Real-Time Typing Indicator Sync Mechanics
+    let typingTimeout;
+    input.addEventListener("input", () => {
+      database.ref("typingStatus/" + myUsername).set(true);
+      
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+        database.ref("typingStatus/" + myUsername).set(false);
+      }, 1500);
+    });
 
-/* ================= SEND ================= */
-input.addEventListener("keydown", e => {
-  if (e.key !== "Enter") return;
+    database.ref("typingStatus").on("value", (snapshot) => {
+      let activeTypers = [];
+      snapshot.forEach((child) => {
+        if (child.key !== myUsername && child.val() === true) {
+          activeTypers.push(child.key);
+        }
+      });
 
-  const text = input.value.trim();
-  if (!text) return;
+      if (activeTypers.length > 0) {
+        statusUpdates.innerText = `>> ${activeTypers.join(", ")} is typing...`;
+      } else {
+        statusUpdates.innerText = "";
+      }
+    });
 
-  input.value = "";
+    function renderIncomingMessage(user, text, timeStr) {
+      const msgDiv = document.createElement("div");
+      msgDiv.className = "msg";
+      
+      let nameStyle = "";
+      if (user === "🤖 SHIP_AI") nameStyle = "style='color: var(--accent-purple)'";
+      
+      msgDiv.innerHTML = `
+        <div class="msg-meta">
+          <span class="user" ${nameStyle}>${clean(user)}</span>
+          <span class="time">${timeStr}</span>
+        </div>
+        <div class="text-payload">${clean(text)}</div>
+      `;
+      feed.appendChild(msgDiv);
+      feed.scrollTop = feed.scrollHeight;
+    }
 
-  if (handleCommand(text)) return;
+    input.addEventListener("keydown", async (e) => {
+      if (e.key === "Enter") {
+        const rawText = input.value;
+        if (!rawText.trim()) return;
 
-  db.ref("messages").push({
-    username,
-    text,
-    timestamp: new Date().toLocaleTimeString()
-  });
-});
-</script>
+        input.value = "";
+        database.ref("typingStatus/" + myUsername).set(false);
 
-</body>
-</html>
+        const timestamp = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+        const isCommand = await handleCommand(rawText, timestamp);
+        
+        if (!isCommand) {
+          database.ref("messages").push({
+            username: myUsername,
+            text: rawText,
+            timestamp: timestamp
+          });
+        }
+      }
+    });
+
+    /* ================= SYSTEM CORE COMMAND INTELLIGENCE ================= */
+    async function handleCommand(text, timestamp) {
+      const cleanText = text.trim();
+      const cmd = cleanText.toLowerCase();
+
+      if (cmd === "/clear") {
+        feed.innerHTML = "";
+        return true;
+      }
+
+      if (cmd.startsWith("/theme ")) {
+        const selectedTheme = cmd.substring(7).trim();
+        document.body.className = "";
+        if (selectedTheme === "matrix") document.body.classList.add("theme-matrix");
+        if (selectedTheme === "cyber") document.body.classList.add("theme-cyber");
+        
+        const systemDiv = document.createElement("div");
+        systemDiv.className = "msg sys-alert";
+        systemDiv.innerHTML = `>> SYSTEM: UI display array reconfigured to [${selectedTheme}].`;
+        feed.appendChild(systemDiv);
+        feed.scrollTop = feed.scrollHeight;
+        return true;
+      }
+
+      if (cmd === "/wipe") {
+        database.ref("messages").remove();
+        feed.innerHTML = `<div class="msg"><div class="text-payload" style="color: var(--accent-red)">>> CRITICAL: Global logs wiped from server.</div></div>`;
+        return true;
+      }
+
+      if (cmd.startsWith("/ai ")) {
+        const aiPrompt = cleanText.substring(4).trim();
+        if (!aiPrompt) return true;
+
+        const thinkingEl = document.createElement("div");
+        thinkingEl.className = "msg";
+        thinkingEl.innerHTML = `<div class="text-payload sys-alert">>> SHIP_AI: Query routed through secure Render proxy. Computing...</div>`;
+        feed.appendChild(thinkingEl);
+        feed.scrollTop = feed.scrollHeight;
+
+        try {
+          const res = await fetch("https://pasteitsearchit.onrender.com/api/ai", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt: aiPrompt })
+          });
+          
+          const data = await res.json();
+          thinkingEl.remove();
+
+          if (data.error) throw new Error(data.error);
+
+          database.

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Command Network v4</title>
+<title>Command Network v4.1</title>
 
 <style>
 body {
@@ -13,19 +13,42 @@ body {
   color: #d7dde8;
 }
 
+/* HEADER */
 header {
   background: #0f1622;
   padding: 10px;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
   border-bottom: 1px solid #1f2a3a;
 }
 
+/* MAIN LAYOUT */
 #layout {
   display: grid;
   grid-template-columns: 220px 1fr 260px;
   height: 85vh;
+}
+
+/* MOBILE FIX */
+@media (max-width: 800px) {
+  #layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+  }
+
+  #channels {
+    display: flex;
+    overflow-x: auto;
+    gap: 6px;
+    border-right: none;
+    border-bottom: 1px solid #1f2a3a;
+  }
+
+  #radar {
+    max-height: 160px;
+  }
 }
 
 /* CHANNELS */
@@ -40,10 +63,7 @@ header {
   margin-bottom: 6px;
   cursor: pointer;
   background: rgba(255,255,255,0.03);
-}
-
-.channel:hover {
-  background: rgba(255,255,255,0.08);
+  white-space: nowrap;
 }
 
 /* FEED */
@@ -67,6 +87,7 @@ header {
   padding: 10px;
   font-size: 12px;
   color: #4dd0e1;
+  overflow-y: auto;
 }
 
 /* INPUT */
@@ -78,7 +99,7 @@ header {
   border-top: 1px solid #1f2a3a;
 }
 
-input, button {
+input, button, select {
   font-family: monospace;
   border: none;
   border-radius: 6px;
@@ -88,12 +109,12 @@ input, button {
 input {
   background: #141c2b;
   color: #fff;
-  flex: 1;
 }
 
 button {
   background: #d32f2f;
   color: white;
+  cursor: pointer;
 }
 </style>
 </head>
@@ -101,23 +122,23 @@ button {
 <body>
 
 <header>
-  <div>🛰 Command Network v4</div>
-  <div>
-    User:
+  <div>🛰 Command Network v4.1</div>
+
+  <div style="display:flex; gap:6px; flex-wrap:wrap;">
     <input id="usernameBox" placeholder="operator" style="width:120px;" />
-    Role:
+    
     <select id="roleBox">
       <option value="operator">operator</option>
       <option value="admin">admin</option>
       <option value="guest">guest</option>
     </select>
+
     <button id="muteBtn">🔊</button>
   </div>
 </header>
 
 <div id="layout">
   <div id="channels">
-    <b>CHANNELS</b>
     <div class="channel" data-ch="alpha"># alpha</div>
     <div class="channel" data-ch="bravo"># bravo</div>
     <div class="channel" data-ch="charlie"># charlie</div>
@@ -125,8 +146,7 @@ button {
   </div>
 
   <div id="feed"></div>
-
-  <div id="radar">🟢 SYSTEM INIT...</div>
+  <div id="radar">🟢 INIT...</div>
 </div>
 
 <div id="inputBar">
@@ -148,7 +168,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
 
 /* FIREBASE */
-const firebaseConfig = {
+const app = initializeApp({
   apiKey: "AIzaSyBDQGlsajY4iMxlJvZUfEvm9CnBKnHcD78",
   authDomain: "shared-notes-f6307.firebaseapp.com",
   databaseURL: "https://shared-notes-f6307-default-rtdb.firebaseio.com",
@@ -156,9 +176,8 @@ const firebaseConfig = {
   storageBucket: "shared-notes-f6307.firebasestorage.app",
   messagingSenderId: "51317483112",
   appId: "1:51317483112:web:7767ef1f15f473ce98bddd"
-};
+});
 
-const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 /* STATE */
@@ -192,89 +211,110 @@ const sCmd=()=>tone(660,90,"triangle");
 const sAlert=()=>tone(120,300,"sawtooth",0.08);
 
 /* CHANNEL REF */
-const messagesRef = (ch)=>ref(db,"channels/"+ch);
+const messagesRef = ch => ref(db,"channels/"+ch);
 
-/* SAFE */
+/* CLEAN */
 const clean = s => String(s).replaceAll("<","&lt;").replaceAll(">","&gt;");
 
-/* CHANNEL SWITCH */
+/* CURRENT USER ID */
+const myId = crypto.randomUUID?.() || String(Date.now());
+const presenceRef = ref(db,"presence/"+myId);
+
+/* ---------------- PRESENCE FIX ---------------- */
+function updatePresence() {
+  const name = userBox.value.trim() || "anon";
+  const role = roleBox.value;
+
+  set(presenceRef, {
+    user: name,
+    role,
+    channel,
+    status: "online",
+    t: Date.now()
+  });
+
+  onDisconnect(presenceRef).set({
+    user: name,
+    role,
+    channel,
+    status: "offline",
+    t: Date.now()
+  });
+}
+
+/* FIX: update on BOTH inputs (this was broken before) */
+userBox.addEventListener("input", updatePresence);
+roleBox.addEventListener("change", updatePresence);
+
+/* init */
+updatePresence();
+
+/* ---------------- RADAR ---------------- */
+onValue(ref(db,"presence"),snap=>{
+  const d=snap.val()||{};
+  const online=Object.values(d).filter(u=>u.status==="online");
+
+  radar.innerHTML=
+    "🟢 ONLINE OPS ("+online.length+")<br><br>"+
+    online.map(u=>`• ${clean(u.user)} [${u.role}] (${u.channel})`).join("<br>");
+});
+
+/* ---------------- CHANNEL SWITCH ---------------- */
 document.querySelectorAll(".channel").forEach(el=>{
   el.onclick=()=>{
     channel=el.dataset.ch;
     feed.innerHTML="";
     listen();
+    updatePresence();
   };
 });
 
-/* PRESENCE */
-const myId = crypto.randomUUID?.()||String(Date.now());
-const presenceRef = ref(db,"presence/"+myId);
-
-function setPresence(){
-  set(presenceRef,{
-    user:userBox.value||"anon",
-    role:roleBox.value,
-    channel,
-    status:"online",
-    t:Date.now()
-  });
-
-  onDisconnect(presenceRef).set({
-    user:userBox.value||"anon",
-    role:roleBox.value,
-    channel,
-    status:"offline",
-    t:Date.now()
-  });
-}
-setPresence();
-
-/* RADAR */
-onValue(ref(db,"presence"),snap=>{
-  const d=snap.val()||{};
-  const users=Object.values(d).filter(u=>u.status==="online");
-  radar.innerHTML="🟢 ONLINE OPS<br><br>"+
-    users.map(u=>`• ${clean(u.user)} [${u.role}] (${u.channel})`).join("<br>");
-});
-
-/* MESSAGES */
+/* ---------------- MESSAGES ---------------- */
 let lastKey=null;
 
 function listen(){
   onChildAdded(messagesRef(channel),snap=>{
     const d=snap.val();
+
     const div=document.createElement("div");
     div.className="msg";
-    div.innerHTML=`<b>${clean(d.user)}</b> [${d.channel}]<br>${clean(d.text)}`;
+    div.innerHTML=
+      `<b>${clean(d.user)}</b> [${d.channel}]<br>${clean(d.text)}`;
+
     feed.appendChild(div);
     feed.scrollTop=feed.scrollHeight;
+
     lastKey=snap.key;
     sRecv();
   });
 }
 listen();
 
-/* COMMANDS */
+/* ---------------- COMMANDS ---------------- */
 function cmd(t){
   const c=t.toLowerCase();
 
   if(c==="/clear"){feed.innerHTML="";return true;}
+
   if(c==="/wipe"&&roleBox.value==="admin"){
     sAlert();
     remove(ref(db,"channels/"+channel));
     feed.innerHTML="";
     return true;
   }
+
   if(c.startsWith("/channel ")){
     channel=c.split(" ")[1];
     feed.innerHTML="";
     listen();
+    updatePresence();
     return true;
   }
+
   return false;
 }
 
-/* SEND */
+/* ---------------- SEND ---------------- */
 function send(){
   const text=input.value.trim();
   if(!text)return;

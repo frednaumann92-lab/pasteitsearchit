@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Command Network v4.5 Login Stable</title>
+<title>Command Network v4.6 Login Gate</title>
 
 <style>
 body {
@@ -13,13 +13,57 @@ body {
   color: #d7dde8;
 }
 
+/* LOGIN OVERLAY */
+#authScreen {
+  position: fixed;
+  inset: 0;
+  background: #05070c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 999;
+}
+
+#authBox {
+  background: #0f1622;
+  padding: 20px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 280px;
+}
+
+input, button {
+  font-family: monospace;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+}
+
+input {
+  background: #141c2b;
+  color: white;
+}
+
+button {
+  background: #d32f2f;
+  color: white;
+  cursor: pointer;
+}
+
+/* MAIN APP */
+#app {
+  display: none;
+}
+
 header {
   background: #0f1622;
   padding: 10px;
   display: flex;
   justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
   border-bottom: 1px solid #1f2a3a;
 }
 
@@ -32,14 +76,13 @@ header {
 #channels {
   background: #0a0f18;
   padding: 10px;
-  border-right: 1px solid #1f2a3a;
 }
 
 .channel {
   padding: 8px;
   margin-bottom: 6px;
-  cursor: pointer;
   background: rgba(255,255,255,0.03);
+  cursor: pointer;
 }
 
 #feed {
@@ -55,78 +98,60 @@ header {
   background: rgba(255,255,255,0.03);
 }
 
-#radar {
-  background: #0a0f18;
-  padding: 10px;
-  border-left: 1px solid #1f2a3a;
-}
-
 #inputBar {
   display: flex;
   padding: 10px;
   gap: 6px;
   background: #0f1622;
   border-top: 1px solid #1f2a3a;
-  position: sticky;
-  bottom: 0;
 }
 
-input, button {
-  font-family: monospace;
-  padding: 10px;
-  border: none;
-  border-radius: 6px;
-}
-
-input {
+#msg {
+  flex: 1;
   background: #141c2b;
   color: white;
-  flex: 1;
-}
-
-button {
-  background: #d32f2f;
-  color: white;
-}
-
-#loginBox {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
 }
 </style>
 </head>
 
 <body>
 
-<header>
-  <div>🛰 Command Network v4.5 Login Stable</div>
+<!-- LOGIN SCREEN -->
+<div id="authScreen">
+  <h2>🛰 Command Network</h2>
 
-  <div id="loginBox">
+  <div id="authBox">
     <input id="email" placeholder="email" />
     <input id="pass" type="password" placeholder="password" />
-    <button id="loginBtn">Login</button>
-    <button id="anonBtn">Guest</button>
-    <button id="logoutBtn">Logout</button>
 
-    <span id="status">🔄 connecting...</span>
+    <button id="loginBtn">Login</button>
+    <button id="guestBtn">Enter as Guest</button>
   </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+
+<header>
+  <div>🛰 Command Network v4.6</div>
+  <div id="status">offline</div>
 </header>
 
 <div id="layout">
   <div id="channels">
     <div class="channel" data-ch="alpha"># alpha</div>
     <div class="channel" data-ch="bravo"># bravo</div>
-    <div class="channel" data-ch="charlie"># charlie</div>
   </div>
 
   <div id="feed"></div>
-  <div id="radar">🟢 ready</div>
+  <div></div>
 </div>
 
 <div id="inputBar">
   <input id="msg" placeholder="message..." />
   <button id="send">SEND</button>
+</div>
+
 </div>
 
 <script type="module">
@@ -142,7 +167,6 @@ import {
   getAuth,
   signInWithEmailAndPassword,
   signInAnonymously,
-  signOut,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 
@@ -157,52 +181,49 @@ const app = initializeApp({
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-/* ADMIN */
-const ADMIN_UIDS = [
-  "j4KFCYgFz0UR6n2NF2ZdLkwUfkm1"
-];
-
+/* STATE */
 let channel = "alpha";
 let user = null;
 
+/* UI */
+const authScreen = document.getElementById("authScreen");
+const appUI = document.getElementById("app");
+const status = document.getElementById("status");
 const feed = document.getElementById("feed");
 const msg = document.getElementById("msg");
-const status = document.getElementById("status");
-
-/* AUTH SAFE STATE (NO AUTO CONFLICT) */
-onAuthStateChanged(auth, u => {
-  user = u;
-
-  if (!u) {
-    status.textContent = "🔴 logged out";
-    return;
-  }
-
-  const role = u.isAnonymous
-    ? "guest"
-    : (ADMIN_UIDS.includes(u.uid) ? "admin" : "operator");
-
-  status.textContent = `🟢 ${role}`;
-
-  listen();
-});
 
 /* LOGIN */
 document.getElementById("loginBtn").onclick = async () => {
-  await signInWithEmailAndPassword(
-    auth,
-    document.getElementById("email").value,
-    document.getElementById("pass").value
-  );
+  try {
+    await signInWithEmailAndPassword(
+      auth,
+      email.value,
+      pass.value
+    );
+  } catch(e) {
+    alert("Login failed");
+    console.error(e);
+  }
 };
 
-/* GUEST LOGIN */
-document.getElementById("anonBtn").onclick = () => {
-  signInAnonymously(auth);
+/* GUEST */
+document.getElementById("guestBtn").onclick = async () => {
+  await signInAnonymously(auth);
 };
 
-/* LOGOUT */
-document.getElementById("logoutBtn").onclick = () => signOut(auth);
+/* AUTH STATE */
+onAuthStateChanged(auth, u => {
+  if (!u) return;
+
+  user = u;
+
+  authScreen.style.display = "none";
+  appUI.style.display = "block";
+
+  status.textContent = u.isAnonymous ? "guest" : "user";
+
+  listen();
+});
 
 /* DB */
 const messagesRef = ch => ref(db, "channels/" + ch);
@@ -223,7 +244,7 @@ function listen() {
   });
 }
 
-/* CHANNELS */
+/* CHANNEL SWITCH */
 document.querySelectorAll(".channel").forEach(el => {
   el.onclick = () => {
     channel = el.dataset.ch;
@@ -232,7 +253,7 @@ document.querySelectorAll(".channel").forEach(el => {
 });
 
 /* SEND */
-function send() {
+document.getElementById("send").onclick = () => {
   if (!user) return;
 
   const text = msg.value.trim();
@@ -245,17 +266,16 @@ function send() {
   });
 
   msg.value = "";
-}
-
-document.getElementById("send").onclick = send;
+};
 
 /* ENTER KEY */
 msg.addEventListener("keydown", e => {
   if (e.key === "Enter") {
     e.preventDefault();
-    send();
+    document.getElementById("send").click();
   }
 });
+
 </script>
 
 </body>

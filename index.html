@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Command Network v5 Stable (Fixed)</title>
+<title>Command Network v5 Stable FIX</title>
 
 <style>
 body {
@@ -73,6 +73,7 @@ input, button {
 input {
   background: #141c2b;
   color: white;
+  flex: 1;
 }
 
 button {
@@ -87,11 +88,6 @@ button {
   background: #111a2a;
   border-radius: 6px;
 }
-
-#adminBox {
-  display: flex;
-  gap: 6px;
-}
 </style>
 </head>
 
@@ -100,11 +96,9 @@ button {
 <header>
   <div>🛰 Command Network v5 Stable</div>
 
-  <div id="adminBox">
-    <input id="email" placeholder="admin email" />
-    <input id="pass" type="password" placeholder="password" />
-    <button id="adminLogin">Admin Login</button>
-  </div>
+  <input id="email" placeholder="admin email (optional)" />
+  <input id="pass" type="password" placeholder="password (optional)" />
+  <button id="adminLogin">Admin Login</button>
 
   <button id="logoutBtn">Logout</button>
 
@@ -157,14 +151,14 @@ const app = initializeApp({
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-/* ADMIN UID */
+/* 🔴 IMPORTANT: PUT YOUR REAL ADMIN UID HERE */
 const ADMIN_UIDS = [
   "uiXgz4sgYfo5TjSl1uLc9Xmypk7Xv1"
 ];
 
-let channel = "alpha";
 let user = null;
 let role = "guest";
+let channel = "alpha";
 let unsubscribe = null;
 
 /* UI */
@@ -174,7 +168,7 @@ const status = document.getElementById("status");
 
 const messagesRef = ch => ref(db, "channels/" + ch);
 
-/* CLEAN LISTENER */
+/* LISTENER CLEANUP */
 function listen() {
   if (unsubscribe) unsubscribe();
   feed.innerHTML = "";
@@ -196,16 +190,20 @@ onAuthStateChanged(auth, u => {
   user = u;
 
   if (!u) {
-    status.textContent = "offline";
     role = "none";
+    status.textContent = "offline";
     return;
   }
 
-  role =
-    ADMIN_UIDS.includes(u.uid) ? "admin" :
-    u.isAnonymous ? "guest" : "operator";
+  const uid = u.uid;
 
-  status.textContent = role;
+  role = ADMIN_UIDS.includes(uid)
+    ? "admin"
+    : u.isAnonymous
+      ? "guest"
+      : "operator";
+
+  status.textContent = `${role} (${uid.slice(0,6)})`;
 
   listen();
 });
@@ -227,6 +225,7 @@ document.getElementById("adminLogin").onclick = async () => {
 document.getElementById("logoutBtn").onclick = async () => {
   await signOut(auth);
   feed.innerHTML = "";
+  status.textContent = "logged out";
 };
 
 /* CHANNEL SWITCH */
@@ -244,7 +243,7 @@ function send() {
   const text = msg.value.trim();
   if (!text) return;
 
-  /* COMMANDS */
+  /* ADMIN COMMAND */
   if (role === "admin" && text === "/wipe") {
     remove(messagesRef(channel));
     feed.innerHTML = "";

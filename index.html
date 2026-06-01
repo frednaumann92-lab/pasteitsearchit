@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Command Network v4.3.2 Auto-Guest</title>
+<title>Command Network v4.3.3 Stable</title>
 
 <style>
 body {
@@ -109,12 +109,6 @@ button {
   cursor: pointer;
 }
 
-#loginBox {
-  display:flex;
-  gap:6px;
-  flex-wrap:wrap;
-}
-
 #roleTag {
   padding: 6px 10px;
   background: #111a2a;
@@ -126,9 +120,9 @@ button {
 <body>
 
 <header>
-  <div>🛰 Command Network v4.3.2 Auto-Guest</div>
+  <div>🛰 Command Network v4.3.3 Stable</div>
 
-  <div id="loginBox">
+  <div>
     <input id="email" placeholder="email" />
     <input id="pass" type="password" placeholder="password" />
     <button id="loginBtn">Login</button>
@@ -191,7 +185,7 @@ const app = initializeApp({
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-/* ADMIN UID LIST */
+/* ADMIN UID */
 const ADMIN_UIDS = [
   "j4KFCYgFz0UR6n2NF2ZdLkwUfkm1"
 ];
@@ -200,6 +194,7 @@ const ADMIN_UIDS = [
 let channel = "alpha";
 let user = null;
 let role = "guest";
+let listener = null;
 
 /* UI */
 const feed = document.getElementById("feed");
@@ -212,36 +207,38 @@ const clean = s => String(s).replaceAll("<","&lt;").replaceAll(">","&gt;");
 /* DB */
 const messagesRef = ch => ref(db,"channels/"+ch);
 
-/* =========================
-   AUTO GUEST LOGIN (FIX)
-========================= */
-signInAnonymously(auth); // 👈 everyone becomes guest instantly
+/* AUTO GUEST LOGIN (SAFE) */
+setTimeout(() => {
+  signInAnonymously(auth).catch(console.error);
+}, 200);
 
-/* LOGIN BUTTONS */
+/* LOGIN */
 document.getElementById("loginBtn").onclick = async () => {
-  await signInWithEmailAndPassword(
-    auth,
-    document.getElementById("email").value,
-    document.getElementById("pass").value
-  );
+  try {
+    await signInWithEmailAndPassword(
+      auth,
+      document.getElementById("email").value,
+      document.getElementById("pass").value
+    );
+  } catch(e) {
+    console.error(e);
+  }
 };
 
 document.getElementById("logoutBtn").onclick = () => signOut(auth);
 
 /* AUTH STATE */
 onAuthStateChanged(auth, u => {
-  user = u;
-
   if(!u){
-    roleTag.textContent = "[connecting...]";
+    roleTag.textContent = "🔄 connecting...";
     return;
   }
 
-  if(u.isAnonymous){
-    role = "guest";
-  } else {
-    role = ADMIN_UIDS.includes(u.uid) ? "admin" : "operator";
-  }
+  user = u;
+
+  role = u.isAnonymous
+    ? "guest"
+    : (ADMIN_UIDS.includes(u.uid) ? "admin" : "operator");
 
   roleTag.textContent = `🟢 [${role}] ${u.email || "guest"}`;
 
@@ -293,9 +290,7 @@ document.querySelectorAll(".channel").forEach(el=>{
   };
 });
 
-/* MESSAGES */
-let listener=null;
-
+/* LISTENER (FIXED CLEAN SWITCHING) */
 function listen(){
   if(listener) off(listener);
 
@@ -307,7 +302,7 @@ function listen(){
     const div=document.createElement("div");
     div.className="msg";
 
-    div.innerHTML=
+    div.innerHTML =
       `<b>${clean(d.user)}</b> [${d.role}]<br>${clean(d.text)}`;
 
     feed.appendChild(div);
@@ -339,7 +334,10 @@ document.getElementById("sendBtn").onclick = () => {
   const text=input.value.trim();
   if(!text || !user) return;
 
-  if(cmd(text)){ input.value=""; return; }
+  if(cmd(text)){
+    input.value="";
+    return;
+  }
 
   push(messagesRef(channel),{
     user: user.email || "guest",

@@ -1,28 +1,55 @@
 # pasteitsearchit
-A lightweight web tool for pasting text, searching with live highlights, exporting content, encrypting text, and having some sarcastic fun along the way — now with a live clock.
+# TERMINUS_COMMAND_CENTER v4.2
 
-Features:
+`TERMINUS_COMMAND_CENTER` is a lightweight, browser-based **Cyberpunk Tactical Interface** designed for real-time collaborative communication and AI interaction. Built with a focus on aesthetic immersion and functional simplicity, it utilizes a Firebase-backed real-time matrix to sync data across all active nodes.
 
-Paste or type any text
+---
 
-Search with instant highlighting
+## Core Architecture
 
-Export text to a file
+The application is built on a "Zero-Backend" philosophy, leveraging client-side logic and real-time database listeners.
 
-Dark mode toggle
+* **Real-time Synchronization:** Powered by Firebase Realtime Database (RTD) for sub-millisecond message delivery and presence tracking.
+* **Audio Engine:** Web Audio Context generates procedural UI feedback tones (Sines, Squares, and Sawtooths) based on system events.
+* **Visual Matrix:** A CSS-variable driven theme engine allowing for instantaneous UI re-configuration across four distinct archetypes.
+* **AI Proxy:** Secure routing to a SHIP_AI sub-routine via a specialized Render host container.
 
-Optional “encryption” mode
+---
 
-Random sarcastic remarks
+## Functional Commands
 
-Real-time clock
+The terminal recognizes specific syntax to manipulate the local console and the global database state.
 
-How to use:
+### Communications & AI
 
-Paste your text into the box.
+| Command | Action |
+| :--- | :--- |
+| `/ai [query]` | Broadcasts a prompt to the SHIP_AI. Responses are rendered with a purple accent. |
+| `[text]` | Standard broadcast to all active operators on the grid. |
 
-Type in the search box to highlight matches.
+### Theme Configuration
 
-Use the buttons for export, dark mode, or encryption.
+| Command | Aesthetic Profile |
+| :--- | :--- |
+| `/theme cyberpunk` | Cyan/Blue neon (Default). |
+| `/theme matrix` | Matrix-digital green. |
+| `/theme retro` | 1984 Amber vintage CRT. |
+| `/theme void` | Deep purple/void-space styling. |
 
-Enjoy the sarcastic comments.
+### Administrative Protocols
+
+* **`/clear`**: Flushes the local buffer. This only affects *your* screen.
+* **`/del last`**: Deletes the absolute final message in the database for all users.
+* **`/wipe`**: **DANGER.** Performs an atomic wipe of the entire message history. This cannot be undone.
+
+---
+
+## Operating Instructions
+
+1. **Initialize Identity:** Enter your operator name in the `SYS_OPERATOR_ID` box. This generates a unique HSL color signature for your messages.
+2. **Calibrate Audio:** Click anywhere on the interface to resume the `AudioContext`. Toggle the 🔊 icon if you require silent operations.
+3. **Deploy Queries:** Use the `/ai` prefix to interact with the ship's computer. Note that the system uses a secure proxy; connection faults will be reported in red.
+
+---
+
+> **Technical Note:** This application is optimized for both Desktop and Mobile. On mobile devices, the high-render CRT scanline simulation is automatically disabled to preserve GPU cycles and ensure smooth scrolling.

@@ -3,837 +3,405 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Command Center v4.2 // Multi-Theme Matrix & AI Deck</title>
-
+<title>Save and Search</title>
 <style>
-  /* Default Cyberpunk Theme Variables */
-  :root {
-    --bg-dark: #05070a;
-    --panel-bg: #0b111a;
-    --border-color: #1a2636;
-    --glow-color: #00ffcc;
-    --text-primary: #cbd5e1;
-    --text-muted: #4e6580;
-    --accent-red: #ff3366;
-    --accent-purple: #bc6ff1;
-    --accent-green: #00ff66;
-  }
-
-  * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
-
   body {
-    font-family: 'Courier New', Courier, monospace;
-    background: var(--bg-dark);
-    color: var(--text-primary);
-    min-height: 100dvh;
-    display: flex;
-    flex-direction: column;
-    overflow-x: hidden;
-    position: relative;
-    transition: background 0.3s ease, color 0.3s ease;
-    padding: 10px;
+    font-family: monospace;
+    max-width: 900px;
+    margin: 20px auto 80px;
+    background: #f0f4f8;
+    color: #000;
+    transition: background 0.3s, color 0.3s;
+    min-height: 100vh;
   }
-
-  /* Scanline CRT Simulation Effect */
-  body::before {
-    content: " ";
-    display: block;
-    position: absolute;
-    top: 0; left: 0; bottom: 0; right: 0;
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-    z-index: 99999;
-    background-size: 100% 4px, 6px 100%;
-    pointer-events: none;
+  body.dark {
+    background: #121212;
+    color: #eee;
   }
-
-  header {
-    background: var(--panel-bg);
-    padding: 14px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-    transition: background 0.3s ease, border-color 0.3s ease;
+  h1 {
     margin-bottom: 10px;
   }
-
-  .logo {
+  label {
     font-weight: bold;
-    color: var(--glow-color);
-    text-shadow: 0 0 8px var(--glow-color);
-    letter-spacing: 1px;
-    transition: color 0.3s ease, text-shadow 0.3s ease;
+    user-select: none;
   }
-
-  .main-container {
-    display: flex;
-    flex: 1;
-    gap: 10px;
-    overflow: hidden;
-    margin-bottom: 10px;
-    min-height: 0;
-  }
-
-  #feed {
-    flex: 3;
-    overflow-y: auto;
-    padding: 20px;
-    background: rgba(5, 7, 10, 0.95);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    scroll-behavior: smooth;
-  }
-
-  /* Custom Scrollbar */
-  ::-webkit-scrollbar {
-    width: 8px;
-  }
-  ::-webkit-scrollbar-track {
-    background: var(--bg-dark);
-  }
-  ::-webkit-scrollbar-thumb {
-    background: var(--border-color);
-    border-radius: 4px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--glow-color);
-  }
-
-  .msg {
-    padding: 10px 14px;
-    margin-bottom: 12px;
-    border-radius: 4px;
-    background: rgba(15, 22, 34, 0.4);
-    border: 1px solid var(--border-color);
-    line-height: 1.5;
-    animation: fadeIn 0.2s ease-out;
-    transition: background 0.3s ease, border-color 0.3s ease;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(4px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .msg-meta {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 4px;
-    font-size: 0.85em;
-  }
-
-  .user {
-    font-weight: bold;
-  }
-
-  .time {
-    color: var(--text-muted);
-    font-size: 0.85em;
-    margin-left: 8px;
-  }
-
-  .text-payload {
-    white-space: pre-wrap;
-    word-break: break-word;
-    line-height: 1.4;
-  }
-
-  .sys-alert {
-    color: var(--glow-color);
-    font-style: italic;
-    border-left: 3px solid var(--glow-color);
-    padding-left: 8px;
-  }
-
-  /* Sidebar Radar Panel */
-  #radar-panel {
-    flex: 1;
-    background: var(--panel-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    display: flex;
-    flex-direction: column;
-    padding: 15px;
-    transition: background 0.3s ease, border-color 0.3s ease;
-  }
-
-  .panel-title {
-    font-size: 11px;
-    font-weight: bold;
-    text-transform: uppercase;
-    color: var(--glow-color);
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 5px;
-    margin-bottom: 10px;
-    letter-spacing: 2px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  #radar-list {
-    overflow-y: auto;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    font-size: 0.9em;
-  }
-
-  .operator-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 2px 0;
-  }
-
-  .status-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--glow-color);
-    box-shadow: 0 0 6px var(--glow-color);
-    transition: background 0.3s ease, box-shadow 0.3s ease;
-  }
-
-  /* Footer Controls & Inputs */
-  #inputBar {
-    display: flex;
-    gap: 10px;
-    padding: 12px;
-    background: var(--panel-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    align-items: center;
-    transition: background 0.3s ease, border-color 0.3s ease;
-  }
-
-  input, button {
-    font-family: 'Courier New', Courier, monospace;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    padding: 12px;
-    outline: none;
-    transition: all 0.2s ease;
+  textarea, input[type=text] {
+    width: 100%;
+    font-family: monospace;
     font-size: 1em;
+    padding: 8px;
+    margin: 10px 0;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    background: inherit;
+    color: inherit;
+    box-sizing: border-box;
   }
-
-  input {
-    background: #090d14;
-    color: #fff;
+  body.dark textarea, body.dark input[type=text] {
+    border-color: #555;
+    background: #222;
   }
-
-  input:focus {
-    border-color: var(--glow-color);
-    box-shadow: 0 0 8px rgba(0, 255, 204, 0.2);
+  textarea {
+    height: 180px;
+    resize: vertical;
   }
-
-  #usernameBox {
-    width: 160px;
-  }
-
-  #msgInput {
-    flex: 1;
-  }
-
   button {
-    background: rgba(26, 38, 54, 0.5);
-    color: var(--text-primary);
-    cursor: pointer;
-    font-weight: bold;
-  }
-
-  button:hover {
-    background: var(--border-color);
-    color: var(--glow-color);
-  }
-
-  #sendBtn {
-    background: var(--glow-color);
-    color: var(--bg-dark);
+    background: #d32f2f;
     border: none;
-    padding: 12px 24px;
+    color: white;
+    padding: 7px 14px;
+    margin: 5px 5px 10px 0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s ease;
   }
-
-  #sendBtn:hover {
-    background: #00cca3;
-    color: var(--bg-dark);
-    box-shadow: 0 0 12px rgba(0, 255, 204, 0.4);
+  button:hover {
+    background: #9a2222;
   }
-
-  #muteBtn {
-    padding: 6px 10px;
-    font-size: 14px;
+  #sarcasm {
+    font-style: italic;
+    color: #555;
+    min-height: 1.2em;
+    margin-bottom: 10px;
   }
-
-  /* ================= MOBILE SCALING ENGINE ================= */
-  @media (max-width: 768px) {
-    body {
-      min-height: 100dvh;
-      height: auto;
-      overflow: auto;
-      padding: 6px;
-    }
-
-    body::before {
-      display: none; /* Disables high-render CRT simulation on touch screens */
-    }
-
-    header {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 8px;
-      padding: 10px;
-    }
-
-    .logo {
-      text-align: center;
-      font-size: 14px;
-      line-height: 1.3;
-    }
-
-    .header-controls {
-      display: flex;
-      width: 100%;
-      gap: 8px;
-    }
-
-    #usernameBox {
-      flex: 1;
-      width: auto;
-      min-width: 0;
-    }
-
-    #muteBtn {
-      width: 52px;
-      flex-shrink: 0;
-    }
-
-    .main-container {
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-      gap: 8px;
-      min-height: 0;
-    }
-
-    #feed {
-      flex: 1;
-      min-height: 45vh;
-      max-height: 55vh;
-      padding: 10px;
-    }
-
-    #radar-panel {
-      flex: none;
-      max-height: 160px;
-      min-height: 120px;
-      overflow-y: auto;
-    }
-
-    #inputBar {
-      display: flex;
-      flex-wrap: nowrap;
-      gap: 6px;
-      padding: 8px;
-    }
-
-    #msgInput {
-      flex: 1;
-      min-width: 0;
-    }
-
-    #sendBtn {
-      flex-shrink: 0;
-      padding: 12px 14px;
-    }
-
-    .msg {
-      padding: 10px;
-      font-size: 14px;
-    }
-
-    .msg-meta {
-      gap: 4px;
-    }
-
-    .user {
-      max-width: 100%;
-      overflow-wrap: anywhere;
-    }
+  body.dark #sarcasm {
+    color: #bbb;
   }
-
-  /* ================= SMALL PHONE MODE ================= */
-  @media (max-width: 480px) {
-    body {
-      padding: 4px;
-    }
-
-    .logo {
-      font-size: 12px;
-    }
-
-    #feed {
-      min-height: 50vh;
-      max-height: 60vh;
-    }
-
-    #inputBar {
-      padding: 6px;
-    }
-
-    input, button {
-      font-size: 14px;
-      padding: 10px;
-    }
-
-    #sendBtn {
-      min-width: 90px;
-    }
+  #results {
+    background: #fff;
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 6px;
+    max-height: 320px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    font-family: monospace;
+  }
+  body.dark #results {
+    background: #222;
+    border-color: #555;
+  }
+  .highlight0 { background: #ffeb3b; }
+  .highlight1 { background: #8bc34a; }
+  .highlight2 { background: #03a9f4; }
+  .highlight3 { background: #e91e63; }
+  .highlight4 { background: #ff9800; }
+  .highlight5 { background: #9c27b0; }
+  #info {
+    font-size: 0.9em;
+    color: #666;
+    margin-bottom: 10px;
+  }
+  body.dark #info {
+    color: #bbb;
+  }
+  #topbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  #toggles {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+  #destroyMessage {
+    color: crimson;
+    font-weight: bold;
+    margin-top: 5px;
+    min-height: 1.2em;
+  }
+  #clock {
+    position: fixed;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: monospace;
+    font-size: 3.3em;
+    background: #eee;
+    padding: 6px 12px;
+    border-radius: 12px;
+    color: #222;
+    box-shadow: 0 0 6px rgba(0,0,0,0.2);
+    user-select: none;
+    transition: background 0.3s, color 0.3s;
+    z-index: 9999;
+  }
+  body.dark #clock {
+    background: #333;
+    color: #ddd;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
   }
 </style>
 </head>
-
 <body>
 
-<header>
-  <div class="logo" id="headerLogo">🛰 TERMINUS_COMMAND_CENTER // v4.2</div>
-  <div class="header-controls">
-    <input id="usernameBox" placeholder="SYS_OPERATOR_ID" autocomplete="off" />
-    <button id="muteBtn" title="Toggle System Audio">🔊</button>
+<div id="topbar">
+  <h1>Save and Search</h1>
+  <div id="toggles">
+    <label>Going Dark
+      <input type="checkbox" id="darkModeToggle" />
+    </label>
+    <label>Encrypt Text
+      <input type="checkbox" id="encryptToggle" />
+    </label>
+    <label>Destroy the World
+      <input type="checkbox" id="destroyToggle" />
+    </label>
   </div>
-</header>
-
-<div class="main-container">
-  <div id="feed">
-    <div class="msg">
-      <div class="msg-meta"><span class="user" style="color: var(--glow-color)">[SYSTEM]</span><span class="time">CORE_READY</span></div>
-      <div class="text-payload sys-alert">>> Terminal communications grid online. Secure Render proxy connected.</div>
-      <div class="text-payload sys-alert">>> Type /ai [your prompt] to broadcast to SHIP_AI.</div>
-    </div>
-  </div>
-  
-  <div id="radar-panel">
-    <div class="panel-title"><span class="status-dot"></span> Active Matrix Nodes</div>
-    <div id="radar-list"></div>
-  </div>
+  <div id="destroyMessage"></div>
 </div>
 
-<div id="inputBar">
-  <span style="color: var(--glow-color); font-weight: bold; margin-right: 2px; user-select: none;">&gt;</span>
-  <input id="msgInput" placeholder="Type message, /ai query, or /theme [cyberpunk|matrix|retro|void]..." autocomplete="off" autofocus />
-  <button id="sendBtn">EXECUTE</button>
+<label for="pasteArea">Type or paste any text here:</label>
+<textarea id="pasteArea" placeholder="Type or paste any text here"></textarea>
+
+<div id="info">Words: 0 | Lines: 0 | Characters: 0</div>
+<div id="timestamp">Last changed: never</div>
+
+<label for="searchTerm">Search (comma separated terms):</label>
+<input type="text" id="searchTerm" placeholder="Enter search term(s)" />
+
+<div>
+  <button id="clearSearchBtn">Clear Search</button>
+  <button id="copyResultsBtn" title="Copy search results">Copy Results</button>
+  <button id="exportBtn" title="Export pasted text">Export Text</button>
+  <button id="printBtn" title="Print search results">Print</button>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-import {
-  getDatabase,
-  ref,
-  push,
-  onChildAdded,
-  remove,
-  set,
-  onDisconnect,
-  onValue,
-  get
-} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+<div id="sarcasm"></div>
+<div id="results"></div>
 
-/* ================= FIREBASE CONFIGURATION ================= */
-const firebaseConfig = {
-  apiKey: "AIzaSyBDQGlsajY4iMxlJvZUfEvm9CnBKnHcD78",
-  authDomain: "shared-notes-f6307.firebaseapp.com",
-  databaseURL: "https://shared-notes-f6307-default-rtdb.firebaseio.com",
-  projectId: "shared-notes-f6307",
-  storageBucket: "shared-notes-f6307.firebasestorage.app",
-  messagingSenderId: "51317483112",
-  appId: "1:51317483112:web:7767ef1f15f473ce98bddd"
-};
+<div id="clock" aria-live="polite" aria-atomic="true">00:00:00</div>
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+<script>
+(() => {
+  // Elements
+  const pasteArea = document.getElementById('pasteArea');
+  const searchTerm = document.getElementById('searchTerm');
+  const clearBtn = document.getElementById('clearSearchBtn');
+  const copyBtn = document.getElementById('copyResultsBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const printBtn = document.getElementById('printBtn');
+  const darkToggle = document.getElementById('darkModeToggle');
+  const encryptToggle = document.getElementById('encryptToggle');
+  const destroyToggle = document.getElementById('destroyToggle');
+  const destroyMessage = document.getElementById('destroyMessage');
+  const sarcasm = document.getElementById('sarcasm');
+  const results = document.getElementById('results');
+  const info = document.getElementById('info');
+  const timestamp = document.getElementById('timestamp');
+  const clock = document.getElementById('clock');
 
-const messagesRef = ref(db, "messages");
-const presenceRef = ref(db, "presence");
+  const maxColors = 6;
+  const remarks = [
+    "Oh great, another search. Couldn't wait.",
+    "Looking for trouble, huh? Found any yet?",
+    "Sure, because searching is so thrilling...",
+    "Hold on... this is taking forever... kidding, it's instant.",
+    "Your wish is my command. Searching away!",
+    "Hope you find what you're looking for. Or not.",
+    "I'm just here pretending to work hard.",
+    "Beep boop. Search complete. Your majesty."
+  ];
 
-/* ================= UI NODES ================= */
-const feed = document.getElementById("feed");
-const input = document.getElementById("msgInput");
-const usernameBox = document.getElementById("usernameBox");
-const muteBtn = document.getElementById("muteBtn");
-const radarList = document.getElementById("radar-list");
-const headerLogo = document.getElementById("headerLogo");
+  // State
+  let originalText = '';
 
-/* ================= THEME FRAMEWORK MATRIX ================= */
-const themes = {
-  cyberpunk: {
-    "--bg-dark": "#05070a",
-    "--panel-bg": "#0b111a",
-    "--border-color": "#1a2636",
-    "--glow-color": "#00ffcc",
-    "--text-primary": "#cbd5e1",
-    "--text-muted": "#4e6580",
-    "logo-text": "🛰 TERMINUS_COMMAND_CENTER // v4.2"
-  },
-  matrix: {
-    "--bg-dark": "#020502",
-    "--panel-bg": "#050f06",
-    "--border-color": "#0f3011",
-    "--glow-color": "#00ff33",
-    "--text-primary": "#a3ffa8",
-    "--text-muted": "#38823e",
-    "logo-text": "📟 NEB_MATRIX_CORE // RELOADED"
-  },
-  retro: {
-    "--bg-dark": "#120a00",
-    "--panel-bg": "#241400",
-    "--border-color": "#4d2b00",
-    "--glow-color": "#ffb300",
-    "--text-primary": "#ffe4a3",
-    "--text-muted": "#8a5c16",
-    "logo-text": "📜 AMBER_TERMINAL_VINTAGE // 1984"
-  },
-  void: {
-    "--bg-dark": "#0a050c",
-    "--panel-bg": "#140b19",
-    "--border-color": "#331340",
-    "--glow-color": "#d946ef",
-    "--text-primary": "#fae8ff",
-    "--text-muted": "#704680",
-    "logo-text": "🔮 VOID_NEXUS_SUBSYSTEM // UNKNOWN"
+  // Utils
+  const escapeHtml = s => s.replace(/[&<>"']/g, c =>
+    ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c])
+  );
+
+  const gibberish = text => {
+    const chars = '@#$%&*▓▒░ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    return [...text].map(c => (/\s/.test(c) ? c : chars.charAt(Math.floor(Math.random() * chars.length)))).join('');
+  };
+
+  // Update info about text
+  function updateInfo(text = pasteArea.value) {
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+    const lines = text ? text.split('\n').length : 0;
+    info.textContent = `Words: ${words} | Lines: ${lines} | Characters: ${text.length}`;
   }
-};
 
-function applyTheme(themeName) {
-  const targetTheme = themes[themeName];
-  if (!targetTheme) return false;
+  // Update timestamp
+  function updateTimestamp() {
+    const now = new Date();
+    timestamp.textContent = `Last changed: ${now.toLocaleString()}`;
+    localStorage.setItem('last_change_timestamp', now.toISOString());
+  }
 
-  Object.entries(targetTheme).forEach(([variable, value]) => {
-    if (variable !== "logo-text") {
-      document.documentElement.style.setProperty(variable, value);
+  // Save to localStorage
+  function saveText(text) {
+    localStorage.setItem('paste_text', text);
+    updateTimestamp();
+  }
+
+  // Load from localStorage
+  function loadText() {
+    const saved = localStorage.getItem('paste_text');
+    if (saved !== null) {
+      originalText = saved;
+      pasteArea.value = saved;
+      updateInfo(saved);
+      const ts = localStorage.getItem('last_change_timestamp');
+      if (ts) timestamp.textContent = `Last changed: ${new Date(ts).toLocaleString()}`;
     }
+  }
+
+  // Set paste area text and update info
+  function setPasteText(text) {
+    pasteArea.value = text;
+    updateInfo(text);
+  }
+
+  // Toggle encryption
+  function toggleEncryption(enabled) {
+    if (enabled) {
+      setPasteText(gibberish(originalText));
+      pasteArea.readOnly = true;
+    } else {
+      setPasteText(originalText);
+      pasteArea.readOnly = false;
+    }
+  }
+
+  // Pick random sarcastic remark
+  function randomRemark() {
+    sarcasm.textContent = remarks[Math.floor(Math.random() * remarks.length)];
+  }
+
+  // Highlight terms in text
+  function highlight(text, terms) {
+    let escaped = escapeHtml(text);
+    terms.forEach((term, i) => {
+      if (!term) return;
+      const colorIndex = i % maxColors;
+      const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      escaped = escaped.replace(regex, `<span class="highlight${colorIndex}">$1</span>`);
+    });
+    return escaped;
+  }
+
+  // Perform search & show results
+  function search() {
+    const query = searchTerm.value.trim();
+    results.innerHTML = '';
+    sarcasm.textContent = '';
+    if (!query) return;
+    if (!originalText) {
+      results.textContent = 'Paste or type some text above first!';
+      return;
+    }
+    const terms = query.split(',').map(t => t.trim()).filter(Boolean);
+    if (!terms.length) {
+      results.textContent = 'Please enter valid search term(s).';
+      return;
+    }
+
+    randomRemark();
+
+    const lines = originalText.split('\n').filter(line =>
+      terms.some(term => line.toLowerCase().includes(term.toLowerCase()))
+    );
+
+    results.innerHTML = lines.length
+      ? `<pre>${lines.map(line => highlight(line, terms)).join('\n')}</pre>`
+      : 'No matches found.';
+  }
+
+  // Clear search input and results
+  function clearSearch() {
+    searchTerm.value = '';
+    results.textContent = '';
+    sarcasm.textContent = '';
+  }
+
+  // Copy search results to clipboard
+  function copyResults() {
+    const txt = results.innerText || results.textContent;
+    if (!txt) return alert('No search results to copy!');
+    navigator.clipboard.writeText(txt)
+      .then(() => alert('Copied search results!'))
+      .catch(() => alert('Copy failed.'));
+  }
+
+  // Export pasted text as file
+  function exportText() {
+    if (!originalText) return alert('No text to export!');
+    const blob = new Blob([originalText], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'trespass_notices.txt';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // Print search results
+  function printResults() {
+    if (!results.innerHTML.trim()) return alert('No search results to print!');
+    const w = window.open('', '', 'width=600,height=600');
+    w.document.write(`<html><head><title>Search Results</title><style>body{font-family: monospace;white-space: pre-wrap; padding:10px;}</style></head><body>${results.innerHTML}</body></html>`);
+    w.document.close();
+    w.focus();
+    w.print();
+    w.close();
+  }
+
+  // Update live clock every second
+  function updateClock() {
+    const now = new Date();
+    const h = now.getHours().toString().padStart(2, '0');
+    const m = now.getMinutes().toString().padStart(2, '0');
+    const s = now.getSeconds().toString().padStart(2, '0');
+    clock.textContent = `${h}:${m}:${s}`;
+  }
+
+  // Event Listeners
+  pasteArea.addEventListener('input', () => {
+    if (encryptToggle.checked) {
+      encryptToggle.checked = false;
+      pasteArea.readOnly = false;
+      alert('Encryption disabled due to editing.');
+    }
+    originalText = pasteArea.value;
+    updateInfo(originalText);
+    saveText(originalText);
+    search();
   });
 
-  headerLogo.textContent = targetTheme["logo-text"];
-  localStorage.setItem("cmd_theme", themeName);
-  return true;
-}
+  searchTerm.addEventListener('input', search);
+  clearBtn.addEventListener('click', clearSearch);
+  copyBtn.addEventListener('click', copyResults);
+  exportBtn.addEventListener('click', exportText);
+  printBtn.addEventListener('click', printResults);
 
-const activeTheme = localStorage.getItem("cmd_theme") || "cyberpunk";
-applyTheme(activeTheme);
-
-/* ================= IDENT PROTOCOLS ================= */
-usernameBox.value = localStorage.getItem("cmd_user") || "OPERATOR_" + Math.floor(1000 + Math.random() * 9000);
-
-function getUsernameColor(username) {
-  let hash = 0;
-  for (let i = 0; i < username.length; i++) {
-    hash = username.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const h = Math.abs(hash) % 360;
-  return `hsl(${h}, 85%, 65%)`;
-}
-
-usernameBox.addEventListener("change", () => {
-  let name = usernameBox.value.trim();
-  if(!name) name = "anon";
-  usernameBox.value = name;
-  localStorage.setItem("cmd_user", name);
-  setOnline();
-});
-
-/* ================= SOUND ENGINE ARCHITECTURE ================= */
-let soundEnabled = true;
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-document.body.addEventListener("click", () => {
-  if (audioCtx.state === "suspended") audioCtx.resume();
-});
-
-function tone(freq, duration = 100, type = "sine", volume = 0.03) {
-  if (!soundEnabled) return;
-
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-
-  osc.type = type;
-  osc.frequency.value = freq;
-  gain.gain.value = volume;
-
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-
-  osc.start();
-  gain.gain.setValueAtTime(volume, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration/1000);
-  
-  setTimeout(() => osc.stop(), duration);
-}
-
-const soundSend = () => tone(600, 80, "triangle", 0.04);
-const soundReceive = () => tone(900, 50, "sine", 0.03);
-const soundCommand = () => tone(440, 150, "square", 0.02);
-const soundDanger = () => tone(120, 400, "sawtooth", 0.06);
-
-muteBtn.onclick = () => {
-  soundEnabled = !soundEnabled;
-  muteBtn.textContent = soundEnabled ? "🔊" : "🔇";
-};
-
-/* ================= ESCAPE SECURITY LAYER ================= */
-function clean(str) {
-  return String(str)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
-}
-
-/* ================= CHAT STREAM PIPELINE ================= */
-let itemsMap = new Map();
-
-function createMessageElement(data, key) {
-  const div = document.createElement("div");
-  div.className = "msg";
-  div.setAttribute("data-key", key);
-
-  const timeStr = new Date(data.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
-  const userColor = getUsernameColor(data.user);
-
-  div.innerHTML = `
-    <div class="msg-meta">
-      <span class="user" style="color: ${userColor}">${clean(data.user)}</span>
-      <span class="time">${timeStr}</span>
-    </div>
-    <div class="text-payload">${clean(data.text)}</div>
-  `;
-  return div;
-}
-
-onChildAdded(messagesRef, (snap) => {
-  const key = snap.key;
-  const data = snap.val();
-  
-  if (itemsMap.has(key)) return;
-
-  const msgEl = createMessageElement(data, key);
-  feed.appendChild(msgEl);
-  itemsMap.set(key, msgEl);
-  
-  feed.scrollTop = feed.scrollHeight;
-  soundReceive();
-});
-
-onValue(messagesRef, (snap) => {
-  if (!snap.exists()) {
-    feed.innerHTML = "";
-    itemsMap.clear();
-    return;
-  }
-  
-  const currentKeys = Object.keys(snap.val());
-  for (let localKey of itemsMap.keys()) {
-    if (!currentKeys.includes(localKey)) {
-      itemsMap.get(localKey).remove();
-      itemsMap.delete(localKey);
-    }
-  }
-});
-
-/* ================= PRESENT MATRIX REGISTER ================= */
-const myId = crypto.randomUUID?.() || String(Date.now() + Math.random());
-const myPresenceRef = ref(db, `presence/${myId}`);
-
-function setOnline() {
-  const name = usernameBox.value.trim() || "anon";
-
-  set(myPresenceRef, {
-    user: name,
-    status: "online",
-    lastSeen: Date.now()
+  darkToggle.addEventListener('change', e => {
+    document.body.classList.toggle('dark', e.target.checked);
+    localStorage.setItem('dark_mode', e.target.checked ? 'true' : 'false');
   });
 
-  onDisconnect(myPresenceRef).remove();
-}
+  encryptToggle.addEventListener('change', e => toggleEncryption(e.target.checked));
 
-setOnline();
-setInterval(setOnline, 30000);
-
-onValue(presenceRef, (snap) => {
-  const data = snap.val() || {};
-  radarList.innerHTML = "";
-
-  const aiRow = document.createElement("div");
-  aiRow.className = "operator-row";
-  aiRow.innerHTML = `
-    <span class="status-dot" style="background-color: var(--accent-purple); box-shadow: 0 0 6px var(--accent-purple);"></span>
-    <span style="color: var(--accent-purple)">SHIP_AI</span>
-  `;
-  radarList.appendChild(aiRow);
-
-  Object.entries(data).forEach(([id, profile]) => {
-    if (profile.status === "online") {
-      const userColor = getUsernameColor(profile.user);
-      const row = document.createElement("div");
-      row.className = "operator-row";
-      row.innerHTML = `
-        <span class="status-dot"></span>
-        <span style="color: ${userColor}">${clean(profile.user)}</span>
-        ${id === myId ? '<span style="font-size:9px; color:var(--text-muted)">[YOU]</span>' : ''}
-      `;
-      radarList.appendChild(row);
-    }
-  });
-});
-
-/* ================= CENTRAL SUBSYSTEM COMMAND MATRIX ================= */
-async function handleCommand(text) {
-  const cleanText = text.trim();
-  const cmd = cleanText.toLowerCase();
-
-  // Theme command switching engine
-  if (cmd.startsWith("/theme ")) {
-    const targetTheme = cleanText.split(" ")[1];
-    const success = applyTheme(targetTheme);
-    
-    if (success) {
-      const alertDiv = document.createElement("div");
-      alertDiv.className = "msg";
-      alertDiv.innerHTML = `<div class="text-payload sys-alert">>> Visual UI configuration adjusted to "${targetTheme.toUpperCase()}".</div>`;
-      feed.appendChild(alertDiv);
-      feed.scrollTop = feed.scrollHeight;
-    }
-    return true;
-  }
-
-  // Clear display console local buffer
-  if (cmd === "/clear") {
-    feed.innerHTML = "";
-    itemsMap.clear();
-    return true;
-  }
-
-  // Delete absolute last matrix node message
-  if (cmd === "/del last") {
-    const snap = await get(messagesRef);
-    if (snap.exists()) {
-      const keys = Object.keys(snap.val());
-      const absoluteLastKey = keys[keys.length - 1];
-      if (absoluteLastKey) {
-        remove(ref(db, "messages/" + absoluteLastKey));
-      }
-    }
-    return true;
-  }
-
-  // Database atomic wiping mechanism
-  if (cmd === "/wipe") {
-    soundDanger();
-    remove(messagesRef);
-    return true;
-  }
-
-  // Secure Async AI Proxy Processing Sub-routine
-  if (cmd.startsWith("/ai ")) {
-    const aiPrompt = cleanText.substring(4).trim();
-    if (!aiPrompt) return true;
-
-    // Display local rendering output context instantly
-    const localUserDiv = document.createElement("div");
-    localUserDiv.className = "msg";
-    localUserDiv.innerHTML = `
-      <div class="msg-meta">
-        <span class="user" style="color: ${getUsernameColor(usernameBox.value)}">${clean(usernameBox.value.trim() || "anon")}</span>
-        <span class="time">${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})}</span>
-      </div>
-      <div class="text-payload">${clean(cleanText)}</div>
-    `;
-    feed.appendChild(localUserDiv);
-
-    const thinkingEl = document.createElement("div");
-    thinkingEl.className = "msg";
-    thinkingEl.innerHTML = `<div class="text-payload sys-alert">>> SHIP_AI: Query routed through secure Render proxy. Computing...</div>`;
-    feed.appendChild(thinkingEl);
-    feed.scrollTop = feed.scrollHeight;
-
-    try {
-      const res = await fetch("https://pasteitsearchit.onrender.com/api/ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: aiPrompt })
-      });
-      
-      const data = await res.json();
-      thinkingEl.remove();
-
-      if (data.error) throw new Error(data.error);
-
-      const aiDiv = document.createElement("div");
-      aiDiv.className = "msg";
-      aiDiv.style.borderLeft = "3px solid var(--accent-purple)";
-      aiDiv.innerHTML = `
-        <div class="msg-meta">
-          <span class="user" style="color: var(--accent-purple)">🤖 SHIP_AI</span>
-          <span class="time">${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})}</span>
-        </div>
-        <div class="text-payload">${clean(data.text)}</div>
-      `;
-      feed.appendChild(aiDiv);
-      
-    } catch (err) {
-      thinkingEl.innerHTML = `<div class="text-payload" style="color: var(--accent-red)">>> SUBSYSTEM_FAULT: Connection dropped by Render host container.</div>`;
-    }
-    feed.scrollTop = feed.scrollHeight;
-    return true;
-  }
-
-  return false;
-}
-
-/* ================= INTERACTION DISPATCHER ROUTER ================= */
-async function send() {
-  const user = usernameBox.value.trim() || "anon";
-  const text = input.value.trim();
-
-  if (!text) return;
-
-  const isCommand = await handleCommand(text);
-  if (isCommand) {
-    soundCommand();
-    input.value = "";
-    return;
-  }
-
-  // Standard broadcast matrix distribution pipeline
-  push(messagesRef, {
-    user,
-    text,
-    time: Date.now()
+  destroyToggle.addEventListener('change', e => {
+    destroyMessage.textContent = e.target.checked
+      ? "Warning: You've unleashed the apocalypse. No refunds!"
+      : "";
   });
 
-  soundSend();
-  input.value = "";
-}
-
-document.getElementById("sendBtn").onclick = send;
-
-input.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") send();
-});
+  // Initialization
+  loadText();
+  updateInfo();
+  if (localStorage.getItem('dark_mode') === 'true') {
+    darkToggle.checked = true;
+    document.body.classList.add('dark');
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+})();
 </script>
 
 </body>
-</html>/ai [prompt] – Talk to the AI.
-/theme cyberpunk – Cyan/blue neon look.
-/theme matrix – Glowing green look.
-/theme retro – Amber vintage look.
-/theme void – Dark purple look.
-/clear – Clear your own screen.
-/del last – Delete the last message for everyone.
-/wipe – Permanently delete all chat history.
+</html>
